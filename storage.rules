@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─── Negado por padrão ───────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // ─── Uploads privados do usuário ────────────────────────────────────
+    // Apenas o dono lê/escreve nos próprios arquivos.
+    // Validação: tamanho máximo de 5 MB e tipos de arquivo permitidos.
+    match /users/{userId}/uploads/{fileName} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId
+                         && request.resource.size < 5 * 1024 * 1024
+                         && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)|application/pdf');
+
+      allow read: if request.auth != null;
+    }
+
+    // ─── Fotos de perfil (públicas para leitura) ─────────────────────────
+    // Escrita restrita ao dono e limitada a imagens pequenas.
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true; // avatares são públicos por natureza
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 2 * 1024 * 1024 // 2 MB
+                   && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+  }
+}

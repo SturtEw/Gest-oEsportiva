@@ -1,0 +1,68 @@
+# Render Blueprint — backend FastAPI do Gestão Esportiva Escolar
+#
+# Uso: no painel do Render, New → Blueprint, aponte para este repositório.
+# O Render lê este arquivo e cria o serviço já com as variáveis corretas.
+#
+# Segredos NÃO ficam aqui (este arquivo é versionado). Os marcadores
+# `sync: false` fazem o Render pedir o valor no painel na primeira criação.
+
+services:
+  - type: web
+    name: gestaoesportiva-api
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # ─── Ambiente ──────────────────────────────────────────────────────
+      # 'production' ativa as validações de segurança do server.py:
+      # exige segredos fortes, COOKIE_SECURE=true e FRONTEND_ORIGINS explícito.
+      - key: APP_ENV
+        value: production
+      - key: APP_TZ
+        value: America/Sao_Paulo
+
+      # ─── Banco ─────────────────────────────────────────────────────────
+      # Connection string do MongoDB Atlas (mongodb+srv://...). Cole no painel.
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: gestao_esportiva_escolar
+
+      # ─── Segredos (gerar valores únicos de 48 bytes) ───────────────────
+      # python -c "import secrets; print(secrets.token_urlsafe(48))"
+      - key: JWT_SECRET
+        sync: false
+      - key: CSRF_HMAC_SECRET
+        sync: false
+      - key: DOCUMENT_HMAC_SECRET
+        sync: false
+
+      # ─── Cookies / CORS ────────────────────────────────────────────────
+      # O front está no Firebase Hosting e a API no Render: origens DIFERENTES.
+      # Sem SameSite=None o navegador descarta o cookie de sessão e o login
+      # "funciona" sem manter o usuário autenticado.
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SESSION_SAMESITE
+        value: none
+      - key: STATELESS_CSRF
+        value: "true"
+      - key: FRONTEND_ORIGINS
+        value: https://gestaoesportiva-9d8fa.web.app,https://gestaoesportiva-9d8fa.firebaseapp.com
+      - key: FRONTEND_URL
+        value: https://gestaoesportiva-9d8fa.web.app
+
+      # ─── Login com Google ──────────────────────────────────────────────
+      # Mesmo client ID usado pelo front (VITE_GOOGLE_CLIENT_ID).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+      # ─── E-mail (opcional) ─────────────────────────────────────────────
+      - key: EMERGENT_EMAIL_KEY
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Gestão Esportiva Escolar

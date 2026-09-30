@@ -1,0 +1,92 @@
+# Infraestrutura de desenvolvimento em containers.
+#
+# Autorizado no prompt de infraestrutura. Docker NAO e obrigatorio: o fluxo
+# nativo (VS Code tasks + .vscode/*.ps1) continua funcionando e e o caminho
+# recomendado para depurar, porque o debugpy e o msedge debug attach direto aos
+# processos. Use o compose apenas se precisar isolar processos.
+#
+# Ponto central do problema de portas: o Vite roda com strictPort false, entao
+# pode escolher 5174/5175/etc. O mapeamento de RANGE abaixo garante que a porta
+# dinâmica escolhida dentro do container continue exposta no host, para o
+# debugger conseguir conectar.
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    # Change streams exigem replica set (ou mongos). Em um Mongo standalone o
+    # $changeStream falha e o realtime cai para o fallback single-process.
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Enquanto o replica set nao for iniciado, o mongod responde mas o change
+      # stream ainda falha; a verificacao abaixo so passa depois de rs.initiate().
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: gestao_esportiva_escolar
+      # Fuso da escola. O container roda com relogio UTC, entao sem esta variavel
+      # "hoje" no servidor vira o dia seguinte apos as 21:00 em Sao Paulo e datas
+      # de calendario (nascimento, chamada, bimestre) saem erradas. Precisa casar
+      # com backend/.env.
+      APP_TZ: America/Sao_Paulo
+      # O navegador fala com o backend atraves do proxy do Vite, entao a origem
+      # real e a do frontend, nao localhost:8000.
+      FRONTEND_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      # python_modules em volume anonimo para nao poluir o bind mount com
+      # pacotes compilados para Linux numa maquina Windows.
+      - backend-modules:/app/__pycache__
+    command: >
+      python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./student-portal
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Vazio = o trafego de /api passa pelo proxy do Vite (mesma origem).
+      # E o que mantem o cookie de sessao funcionando.
+      VITE_API_BASE: ""
+      VITE_PORT: "5173"
+      VITE_USE_POLLING: "1"
+    ports:
+      # RANGE autorizado: cobre a porta pedida e todas as alternativas que o
+      # Vite pode escolher com strictPort false.
+      - "5173-5185:5173-5185"
+    volumes:
+      - ./student-portal:/app
+      - frontend-modules:/app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  mongo-data:
+  backend-modules:
+  frontend-modules:
