@@ -35,12 +35,34 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
           VITE_CANONICAL_ORIGIN: ${{ vars.VITE_CANONICAL_ORIGIN }}
+          # Only "true"/"false", never the value: detects values saved under the
+          # Secrets tab, which vars.* cannot read.
+          FIREBASE_PROJECT_ID_IN_SECRETS: ${{ secrets.FIREBASE_PROJECT_ID != '' }}
+          VITE_API_BASE_IN_SECRETS: ${{ secrets.VITE_API_BASE != '' }}
         run: |
-          test -n "$FIREBASE_PROJECT_ID" || { echo 'Missing variable FIREBASE_PROJECT_ID'; exit 1; }
+          # ::error:: lines become run annotations, readable without opening the logs.
+          failed=0
+          misplaced_hint() {
+            if [ "$2" = "true" ]; then
+              echo "::error title=$1 is a Secret::$1 exists under Secrets, but this workflow reads it from Variables. Settings > Secrets and variables > Actions > Variables tab > New repository variable."
+            fi
+          }
+          if [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "::error title=Missing FIREBASE_PROJECT_ID::Repository variable FIREBASE_PROJECT_ID is empty (expected gestaoesportiva-9d8fa)."
+            misplaced_hint FIREBASE_PROJECT_ID "$FIREBASE_PROJECT_ID_IN_SECRETS"
+            failed=1
+          fi
           case "$VITE_API_BASE" in
             https://*) ;;
-            *) echo 'Set VITE_API_BASE to the HTTPS URL of the deployed FastAPI backend'; exit 1 ;;
+            '')
+              echo "::error title=Missing VITE_API_BASE::Repository variable VITE_API_BASE is empty (expected https://gestaoesportiva-api.onrender.com)."
+              misplaced_hint VITE_API_BASE "$VITE_API_BASE_IN_SECRETS"
+              failed=1 ;;
+            *)
+              echo "::error title=Invalid VITE_API_BASE::VITE_API_BASE must start with https:// (check for spaces or a missing scheme)."
+              failed=1 ;;
           esac
+          [ "$failed" -eq 0 ] || exit 1
           # Optional. Empty = no redirect from *.web.app (current setup).
           # Set to https://app.<dominio> only after the custom-domain migration
           # (docs/custom-domain.md); otherwise visitors are sent to a host that
@@ -77,8 +99,10 @@ jobs:
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
         run: |
-          test -n "$GCP_WORKLOAD_IDENTITY_PROVIDER" || { echo 'Missing secret GCP_WORKLOAD_IDENTITY_PROVIDER'; exit 1; }
-          test -n "$GCP_SERVICE_ACCOUNT" || { echo 'Missing secret GCP_SERVICE_ACCOUNT'; exit 1; }
+          failed=0
+          test -n "$GCP_WORKLOAD_IDENTITY_PROVIDER" || { echo '::error title=Missing GCP_WORKLOAD_IDENTITY_PROVIDER::Repository secret GCP_WORKLOAD_IDENTITY_PROVIDER is empty (Secrets tab, not Variables).'; failed=1; }
+          test -n "$GCP_SERVICE_ACCOUNT" || { echo '::error title=Missing GCP_SERVICE_ACCOUNT::Repository secret GCP_SERVICE_ACCOUNT is empty (Secrets tab, not Variables).'; failed=1; }
+          [ "$failed" -eq 0 ] || exit 1
       - name: Authenticate to Google Cloud
         if: github.event_name == 'push'
         uses: google-github-actions/auth@v3
