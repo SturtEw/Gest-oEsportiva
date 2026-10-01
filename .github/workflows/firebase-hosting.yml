@@ -34,16 +34,42 @@ jobs:
         env:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          VITE_CANONICAL_ORIGIN: ${{ vars.VITE_CANONICAL_ORIGIN }}
         run: |
           test -n "$FIREBASE_PROJECT_ID" || { echo 'Missing variable FIREBASE_PROJECT_ID'; exit 1; }
           case "$VITE_API_BASE" in
             https://*) ;;
             *) echo 'Set VITE_API_BASE to the HTTPS URL of the deployed FastAPI backend'; exit 1 ;;
           esac
+          # Optional. Empty = no redirect from *.web.app (current setup).
+          # Set to https://app.<dominio> only after the custom-domain migration
+          # (docs/custom-domain.md); otherwise visitors are sent to a host that
+          # does not serve the site yet.
+          if [ -z "$VITE_CANONICAL_ORIGIN" ]; then
+            echo 'VITE_CANONICAL_ORIGIN not set: canonical-domain redirect disabled.'
+          else
+            case "$VITE_CANONICAL_ORIGIN" in
+              https://*) ;;
+              *) echo 'VITE_CANONICAL_ORIGIN must start with https://'; exit 1 ;;
+            esac
+            case "${VITE_CANONICAL_ORIGIN#https://}" in
+              ''|*/*|*'?'*|*'#'*) echo 'VITE_CANONICAL_ORIGIN must be an origin only, e.g. https://app.<dominio> (no path or trailing slash)'; exit 1 ;;
+            esac
+            case "$VITE_API_BASE" in
+              *.onrender.com*) echo 'VITE_CANONICAL_ORIGIN is set but VITE_API_BASE still points to onrender.com: the session would stay cross-site. Set VITE_API_BASE to https://api.<dominio> first.'; exit 1 ;;
+            esac
+            echo "Canonical-domain redirect enabled: $VITE_CANONICAL_ORIGIN"
+          fi
       - name: Build frontend
         env:
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
-        run: npm run build
+          VITE_CANONICAL_ORIGIN: ${{ vars.VITE_CANONICAL_ORIGIN }}
+        run: |
+          npm run build
+          # Vite inlines import.meta.env at build time; confirm the redirect target made it in.
+          if [ -n "$VITE_CANONICAL_ORIGIN" ]; then
+            grep -rqF -- "$VITE_CANONICAL_ORIGIN" dist/assets || { echo "VITE_CANONICAL_ORIGIN missing from the built bundle"; exit 1; }
+          fi
       # Pull requests are validated but never published to the live site.
       - name: Check deployment credentials
         if: github.event_name == 'push'

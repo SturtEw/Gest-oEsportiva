@@ -81,8 +81,13 @@ O script altera:
 | `backend/scripts/smoke_render_config.py` | origem e SameSite esperados |
 
 Depois:
-1. **GitHub → Settings → Secrets and variables → Actions → Variables:**
-   `VITE_API_BASE = https://api.<dominio>` (o CI sobrescreve o `.env.production`).
+1. **GitHub → Settings → Secrets and variables → Actions → Variables**
+   (o CI não lê o `.env.production`, que é ignorado pelo git):
+   - `VITE_API_BASE = https://api.<dominio>`
+   - `VITE_CANONICAL_ORIGIN = https://app.<dominio>` (sem barra no final)
+
+   O workflow recusa o deploy se `VITE_CANONICAL_ORIGIN` estiver definido e
+   `VITE_API_BASE` ainda apontar para `onrender.com`, então troque os dois juntos.
 2. **Render criado sem Blueprint?** O `render.yaml` não é aplicado; ajuste no
    painel: `SESSION_SAMESITE=lax`, `FRONTEND_ORIGINS=https://app.<dominio>`,
    `FRONTEND_URL=https://app.<dominio>`.
@@ -128,6 +133,7 @@ git revert <commit-da-migracao>
 git push   # Render volta a SameSite=None + origens web.app
 cd student-portal; npm run build; cd ..; firebase deploy --only hosting
 ```
-Volte também a variável `VITE_API_BASE` do GitHub para
-`https://gestaoesportiva-api.onrender.com`. Os domínios personalizados no
+No GitHub, volte `VITE_API_BASE` para `https://gestaoesportiva-api.onrender.com`
+e **apague** `VITE_CANONICAL_ORIGIN` (vazio = sem redirecionamento). Faça isso
+antes do push, ou o CI publica o front ainda redirecionando. Os domínios personalizados no
 Render/Firebase podem ficar configurados, sem efeito.

@@ -96,6 +96,7 @@ Próximos passos (detalhes em docs/custom-domain.md):
   1. Conferir:  cd backend && python scripts/smoke_render_config.py
   2. GitHub → Settings → Secrets and variables → Actions → Variables:
        VITE_API_BASE = ${apiOrigin}
+       VITE_CANONICAL_ORIGIN = ${appOrigin}
   3. Se o serviço do Render NÃO foi criado por Blueprint, ajuste no painel:
        SESSION_SAMESITE=lax  FRONTEND_ORIGINS=${appOrigin}  FRONTEND_URL=${appOrigin}
   4. Google Cloud Console → Credentials → OAuth client → Authorized JavaScript origins:
