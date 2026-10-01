@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "msjsdiag.debugger-for-chrome",
+    "ms-pvs-phpx.debugger-for-php",
+    "ms-python.python",
+    "ms-python.debugpy",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
+  ]
+}

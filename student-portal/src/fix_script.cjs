@@ -1,0 +1,10 @@
+const fs = require("fs");
+const p = "C:/Users/carlo/Downloads/emergent/student-portal/src/App.integration.test.tsx";
+const original = fs.readFileSync(p, "utf8");
+const mockStart = original.indexOf("vi.mock('@/lib/api', () => {");
+const importApi = original.indexOf("import { api }");
+const beforeMock = original.substring(0, mockStart);
+const afterMock = original.substring(importApi);
+const correctMock = "vi.mock('@/lib/api', () => ({\n  session: vi.fn(),\n  login: vi.fn(),\n  googleLogin: vi.fn(),\n  googleConfig: vi.fn(),\n  googleLink: vi.fn(),\n  googleUnlink: vi.fn(),\n  logout: vi.fn(),\n  register: vi.fn(),\n  forgotPassword: vi.fn(),\n  resetPassword: vi.fn(),\n  changePassword: vi.fn(),\n  children: vi.fn(),\n  portal: vi.fn(),\n  ranking: vi.fn(),\n  setRankingPreference: vi.fn(),\n  questions: vi.fn(),\n  askQuestion: vi.fn(),\n  adminSummary: vi.fn(),\n  adminNotifications: vi.fn(),\n  markNotificationRead: vi.fn(),\n  markAllNotificationsRead: vi.fn(),\n  teacherApplications: vi.fn(),\n  decideTeacher: vi.fn(),\n  adminStudents: vi.fn(),\n  classes: vi.fn(),\n  approvedTeachers: vi.fn(),\n  setClassTeacher: vi.fn(),\n  adminTeacherWorkspace: vi.fn(),\n  createClass: vi.fn(),\n  assignClass: vi.fn(),\n  inspectStudent: vi.fn(),\n  teacherDashboard: vi.fn(),\n  teacherStudents: vi.fn(),\n  teacherQuestions: vi.fn(),\n  replyToStudent: vi.fn(),\n  getTournaments: vi.fn(),\n  realtimeUrl: vi.fn(() => 'ws://localhost:5173/api/realtime'),\n  request: vi.fn(),\n  ApiError: class ApiError extends Error {\n    status: number\n    constructor(message, status) {\n      super(message)\n      this.name = 'ApiError'\n      this.status = status\n    }\n  },\n}))\n\n";
+fs.writeFileSync(p, beforeMock + correctMock + afterMock);
+console.log("Fixed successfully");

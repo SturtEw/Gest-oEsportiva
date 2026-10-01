@@ -1,0 +1,59 @@
+{
+  "name": "Gestao Esportiva Escolar (Dev Container)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "frontend",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [
+    5173,
+    5174,
+    5175,
+    8000,
+    27017
+  ],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite (porta preferencial)",
+      "onAutoForward": "notify"
+    },
+    "5174": {
+      "label": "Vite (fallback 1)",
+      "onAutoForward": "notify"
+    },
+    "5175": {
+      "label": "Vite (fallback 2)",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "FastAPI",
+      "onAutoForward": "silent"
+    },
+    "27017": {
+      "label": "MongoDB",
+      "onAutoForward": "silent"
+    }
+  },
+  "remoteUser": "node",
+  "containerEnv": {
+    "VITE_API_BASE": "",
+    "VITE_PORT": "5173",
+    "VITE_USE_POLLING": "1",
+    "API_PROXY_TARGET": "http://backend:8000",
+    "APP_TZ": "America/Sao_Paulo"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "js/ts.tsdk.path": "node_modules/typescript/lib",
+        "files.eol": "\n"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-edgedgedevtools.vscode-edge",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install --prefix /workspace/student-portal || true"
+}

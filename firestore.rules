@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Negado por padrão ───────────────────────────────────────────────
+    // Qualquer coleção não explicitamente listada abaixo é inacessível.
+    // IMPORTANTE: em regras do Firestore, permissões se COMBINAM — se uma
+    // regra genérica autoriza, ela anula qualquer regra específica restritiva.
+    // Por isso, nada aqui pode usar `allow read, write: if true`.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── Perfil do usuário ───────────────────────────────────────────────
+    // Apenas o dono pode ler/criar/atualizar/deletar o próprio documento.
+    // O campo `userId` é imutável (não pode ser reatribuído a outro usuário).
+    match /users/{userId} {
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.userId == userId
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100
+                    && request.resource.data.email is string
+                    && request.resource.data.email.matches('.*@.*\\..*')
+                    && (!request.resource.data.keys().hasAny(['role'])
+                        || request.resource.data.role == 'athlete'); // role sensível: só valores permitidos no signup
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100;
+
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // ─── Treinos (workouts) ──────────────────────────────────────────────
+    // Cada usuário só vê e edita os próprios treinos.
+    match /workouts/{workoutId} {
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
+                    && (!request.resource.data.keys().hasAny(['notes'])
+                        || request.resource.data.notes is string);
+
+      allow update, delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == resource.data.userId;
+    }
+
+    // ─── Treinos públicos (feed/comunidade) — apenas leitura ────────────
+    // Qualquer usuário autenticado pode ler, mas não escrever.
+    match /public_workouts/{workoutId} {
+      allow read: if request.auth != null;
+      allow write: if false; // escrita apenas via Admin SDK / Cloud Functions
+    }
+  }
+}

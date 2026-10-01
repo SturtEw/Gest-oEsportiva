@@ -1,0 +1,44 @@
+# Contexto de build do backend.
+#
+# O Dockerfile faz `COPY . .`, então TUDO que não estiver listado aqui acaba
+# dentro da imagem. Sem este arquivo, o backend/.env (com JWT_SECRET,
+# CSRF_HMAC_SECRET, DOCUMENT_HMAC_SECRET e a URI do Mongo) viajava junto e
+# vazava para o registry — confirmado rodando o container e encontrando
+# /app/.env. Os segredos vêm do painel do Render, nunca da imagem.
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Ambiente virtual e caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Testes, scripts de apoio e dados locais
+tests/
+test_mongo.py
+.coverage
+htmlcov/
+*.log
+
+# Ferramentas de desenvolvimento
+.vscode/
+.idea/
+.git/
+.gitignore
+
+# Documentação
+*.md
+docs/

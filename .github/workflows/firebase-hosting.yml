@@ -1,0 +1,68 @@
+name: Firebase Hosting
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+jobs:
+  hosting:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for Workload Identity Federation on push to main.
+    defaults:
+      run:
+        working-directory: student-portal
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: student-portal/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests (Vitest CI mode)
+        run: npm run test:run
+      - name: Check production configuration
+        if: github.event_name == 'push'
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+        run: |
+          test -n "$FIREBASE_PROJECT_ID" || { echo 'Missing variable FIREBASE_PROJECT_ID'; exit 1; }
+          case "$VITE_API_BASE" in
+            https://*) ;;
+            *) echo 'Set VITE_API_BASE to the HTTPS URL of the deployed FastAPI backend'; exit 1 ;;
+          esac
+      - name: Build frontend
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+        run: npm run build
+      # Pull requests are validated but never published to the live site.
+      - name: Check deployment credentials
+        if: github.event_name == 'push'
+        env:
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$GCP_WORKLOAD_IDENTITY_PROVIDER" || { echo 'Missing secret GCP_WORKLOAD_IDENTITY_PROVIDER'; exit 1; }
+          test -n "$GCP_SERVICE_ACCOUNT" || { echo 'Missing secret GCP_SERVICE_ACCOUNT'; exit 1; }
+      - name: Authenticate to Google Cloud
+        if: github.event_name == 'push'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.FIREBASE_PROJECT_ID }}
+
+      - name: Deploy Firebase Hosting (live)
+        if: github.event_name == 'push'
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+        run: npx --yes firebase-tools@latest deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive

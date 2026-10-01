@@ -1,0 +1,49 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+build/
+*.local
+
+# Firebase CLI local diagnostics (may contain account/project detail)
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# MongoDB
+/data/db
