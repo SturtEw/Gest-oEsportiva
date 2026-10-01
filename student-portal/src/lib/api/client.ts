@@ -71,6 +71,11 @@ export async function request<T>(path: string, init: RequestInit & { signal?: Ab
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
     throw new ApiError('Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.', 0)
   }
+  // Login/cadastro rotacionam o cookie CSRF; a API espelha o token vigente neste
+  // header (exposto via CORS). Sem acompanhar a rotação, o próximo POST/PATCH
+  // enviaria o token antigo e receberia 403 em deploys cross-origin.
+  const rotatedCsrf = response.headers.get(CSRF_HEADER)
+  if (rotatedCsrf) setCsrfToken(rotatedCsrf)
   if (response.status === 204) return undefined as T
   const payload = await response.json().catch(() => ({}))
   // Hosting sem backend devolve o HTML do SPA (content-type text/html, status 200)

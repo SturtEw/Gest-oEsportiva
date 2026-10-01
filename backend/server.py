@@ -302,6 +302,9 @@ app.add_middleware(
 
     allow_headers=["Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Impersonate-Role", "X-Impersonate-Target"],
 
+    # Token CSRF rotacionado (ver lib/errors.py): o front cross-origin só o lê se exposto.
+    expose_headers=["X-CSRF-Token"],
+
 
 )
 

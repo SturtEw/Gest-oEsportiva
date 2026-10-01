@@ -383,6 +383,18 @@ def register_middlewares(app: FastAPI) -> None:
             if not request.cookies.get("gesp_csrf") and not already_set:
                 set_csrf_cookie(response)
 
+        # Login/cadastro rotacionam o gesp_csrf. Em cross-origin o JS do front não
+        # lê esse cookie, então espelhamos o token vigente num header exposto via
+        # CORS (só origens de FRONTEND_ORIGINS conseguem lê-lo) e o client.ts
+        # passa a usá-lo. Sem isso o header antigo diverge do cookie novo e toda
+        # mutação autenticada cai em 403.
+        for header in response.headers.getlist("set-cookie"):
+            if header.startswith("gesp_csrf="):
+                token = header.split(";", 1)[0].split("=", 1)[1].strip('"')
+
+                if token:
+                    response.headers["X-CSRF-Token"] = token
+
         response.headers["Content-Security-Policy"] = csp_header(nonce)
 
         response.headers["X-CSP-Nonce"] = nonce
