@@ -7,8 +7,14 @@ will refuse to change an existing root account; rotate credentials separately.
 
 import asyncio
 import os
+import sys
 import uuid
 
+# O diretorio do script (/app/scripts) e o unico que o Python poe no sys.path ao
+# rodar `python scripts/bootstrap_root_admin.py`, deixando `lib` (em /app/lib)
+# inacessivel e abortando com ModuleNotFoundError. Inserir o pai do script torna
+# as duas formas de invocacao validas (script direto e `python -m scripts.…`).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.dates import now_utc
 from lib.db import db, MongoManager
