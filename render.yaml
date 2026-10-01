@@ -49,6 +49,11 @@ services:
       # O front está no Firebase Hosting e a API no Render: origens DIFERENTES.
       # Sem SameSite=None o navegador descarta o cookie de sessão e o login
       # "funciona" sem manter o usuário autenticado.
+      #
+      # Com domínio próprio (app.<dominio> + api.<dominio>) os dois ficam no
+      # mesmo site: SESSION_SAMESITE vira lax e o Safari passa a manter a sessão.
+      # Não edite estes valores à mão para isso — rode
+      # `node scripts/custom-domain.mjs apply <dominio>` (docs/custom-domain.md).
       - key: COOKIE_SECURE
         value: "true"
       - key: SESSION_SAMESITE

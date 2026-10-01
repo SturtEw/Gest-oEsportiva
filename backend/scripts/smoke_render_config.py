@@ -1,25 +1,32 @@
 """Smoke-test: valida a configuração de produção do Render sem subir o servidor.
 
-Simula o ambiente do Render (APP_ENV=production + cookies cross-origin) e
-importa o server para garantir que:
+Simula o ambiente do Render (APP_ENV=production) e importa o server para
+garantir que:
   1. _validate_env_security() não aborta;
-  2. CORS e o auth aceitam a origem do Firebase Hosting;
-  3. o cookie de sessão sai com SameSite=None; Secure (exigido em cross-origin).
+  2. CORS e o WebSocket aceitam a origem do front e recusam origens estranhas;
+  3. o cookie de sessão sai com o SameSite esperado e Secure.
+
+As três constantes abaixo espelham o render.yaml. `scripts/custom-domain.mjs`
+as atualiza junto com o resto ao migrar para domínio próprio.
 """
 
 import os
 import sys
 
+FRONTEND_ORIGIN = "https://gestaoesportiva-9d8fa.web.app"
+EXTRA_FRONTEND_ORIGINS = ["https://gestaoesportiva-9d8fa.firebaseapp.com"]
+EXPECTED_SAMESITE = "none"
+
 os.environ.update({
     "APP_ENV": "production",
     "COOKIE_SECURE": "true",
-    "SESSION_SAMESITE": "none",
+    "SESSION_SAMESITE": EXPECTED_SAMESITE,
     "STATELESS_CSRF": "true",
     "JWT_SECRET": "x" * 48,
     "CSRF_HMAC_SECRET": "y" * 48,
     "DOCUMENT_HMAC_SECRET": "z" * 48,
-    "FRONTEND_ORIGINS": "https://gestaoesportiva-9d8fa.web.app,https://gestaoesportiva-9d8fa.firebaseapp.com",
-    "FRONTEND_URL": "https://gestaoesportiva-9d8fa.web.app",
+    "FRONTEND_ORIGINS": ",".join([FRONTEND_ORIGIN, *EXTRA_FRONTEND_ORIGINS]),
+    "FRONTEND_URL": FRONTEND_ORIGIN,
     "GOOGLE_CLIENT_ID": "991003885757-855fmfqkh2mo6t73jf0ni1fmg4q1sqpr.apps.googleusercontent.com",
     "MONGO_URL": "mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority",
     "DB_NAME": "gestao_esportiva_escolar",
@@ -36,21 +43,24 @@ except SystemExit as exc:
     raise SystemExit(1)
 
 from lib.realtime import allowed_websocket_origin
-from lib.security import SESSION_SAMESITE, COOKIE_SECURE
+from lib.security import COOKIE_SECURE, CSRF_SAMESITE, SESSION_SAMESITE
+
+expected_csrf_samesite = "none" if EXPECTED_SAMESITE == "none" else "strict"
 
 checks = [
-    ("SESSION_SAMESITE == 'none'", SESSION_SAMESITE == "none"),
+    (f"SESSION_SAMESITE == '{EXPECTED_SAMESITE}'", SESSION_SAMESITE == EXPECTED_SAMESITE),
+    (f"CSRF_SAMESITE == '{expected_csrf_samesite}'", CSRF_SAMESITE == expected_csrf_samesite),
     ("COOKIE_SECURE is True", COOKIE_SECURE is True),
-    ("WS aceita origem do Firebase", allowed_websocket_origin("https://gestaoesportiva-9d8fa.web.app")),
+    ("WS aceita origem do front", allowed_websocket_origin(FRONTEND_ORIGIN)),
     ("WS recusa origem desconhecida", not allowed_websocket_origin("https://evil.example.com")),
 ]
 
 cors = [m for m in server.app.user_middleware if "CORS" in str(m.cls)]
 if cors:
     origins = cors[0].kwargs.get("allow_origins", [])
-    checks.append(("CORS inclui Firebase Hosting",
-                   "https://gestaoesportiva-9d8fa.web.app" in origins))
+    checks.append(("CORS inclui a origem do front", FRONTEND_ORIGIN in origins))
     checks.append(("CORS com credentials", cors[0].kwargs.get("allow_credentials") is True))
+    checks.append(("CORS expõe X-CSRF-Token", "X-CSRF-Token" in cors[0].kwargs.get("expose_headers", [])))
 else:
     checks.append(("CORS middleware presente", False))
 

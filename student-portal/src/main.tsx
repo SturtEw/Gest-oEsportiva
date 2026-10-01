@@ -9,6 +9,7 @@ import '@fontsource/manrope/800.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { redirectToCanonicalOrigin } from './lib/canonical-origin'
 import { app as firebaseApp } from './lib/firebase'
 
 // Garante que o Firebase seja inicializado no boot da aplicação
@@ -27,8 +28,13 @@ if (!root) {
   throw new Error('Elemento #root não encontrado.')
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Em *.web.app / *.firebaseapp.com o cookie de sessão seria cross-site (Safari o
+// descarta). Com domínio próprio configurado, manda o visitante para lá antes de
+// montar o app. Sem VITE_CANONICAL_ORIGIN é no-op.
+if (!redirectToCanonicalOrigin()) {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}

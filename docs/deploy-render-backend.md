@@ -29,6 +29,10 @@ e já estão tratados no código:
 | CSRF via corpo da resposta | O JS do `web.app` não lê cookies do domínio do Render | `routers/auth.py` (`/google-config`) |
 | `connect-src` na CSP | O navegador bloqueia `fetch` e `wss` para host fora da CSP | `student-portal/firebase.json` |
 
+> **Safari:** com front e API em sites diferentes o cookie de sessão é de
+> terceiros e o Safari o bloqueia. A correção definitiva é domínio próprio
+> (`app.` + `api.`): veja [custom-domain.md](./custom-domain.md).
+
 > ⚠️ O `VITE_API_BASE` aparece em **dois** lugares e os dois precisam bater: a
 > variável de repositório `VITE_API_BASE` no GitHub (`vars.`, usada pelo CI) e o
 > `student-portal/.env.production` (usado no deploy manual). O mesmo host também
