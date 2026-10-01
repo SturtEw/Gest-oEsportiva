@@ -24,6 +24,10 @@ services:
         value: production
       - key: APP_TZ
         value: America/Sao_Paulo
+      # O Render fica atrás de um proxy reverso: sem isto o rate limit usa o IP
+      # do proxy e TODOS os usuários dividem a mesma cota de 240 req/15 min.
+      - key: TRUST_PROXY
+        value: "true"
 
       # ─── Banco ─────────────────────────────────────────────────────────
       # Connection string do MongoDB Atlas (mongodb+srv://...). Cole no painel.

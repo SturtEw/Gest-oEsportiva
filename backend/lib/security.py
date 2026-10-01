@@ -50,6 +50,14 @@ if SESSION_SAMESITE not in ("strict", "lax", "none"):
     SESSION_SAMESITE = "strict"
 
 
+# O cookie CSRF precisa viajar nas mesmas requisições que o de sessão. Com
+# SameSite=Strict em cross-origin o navegador nunca o envia de web.app para
+# onrender.com, e toda mutação cai em 403 no double-submit. A proteção continua
+# vindo da comparação assinada cookie vs header (o header só é legível pela
+# origem do front autorizada no CORS).
+CSRF_SAMESITE = "none" if SESSION_SAMESITE == "none" else "strict"
+
+
 JWT_ALGORITHM = "HS256"
 
 
@@ -208,7 +216,7 @@ def set_csrf_cookie(response: Response) -> str:
 
         secure=COOKIE_SECURE,
 
-        samesite="strict",  # Strict CSRF protection
+        samesite=CSRF_SAMESITE,  # acompanha a sessão: "none" em cross-origin
 
         path="/",
 
@@ -219,7 +227,7 @@ def set_csrf_cookie(response: Response) -> str:
 
 
 def clear_csrf_cookie(response: Response) -> None:
-    response.delete_cookie(CSRF_COOKIE, path="/", secure=COOKIE_SECURE, httponly=False, samesite="strict")
+    response.delete_cookie(CSRF_COOKIE, path="/", secure=COOKIE_SECURE, httponly=False, samesite=CSRF_SAMESITE)
 
 
 

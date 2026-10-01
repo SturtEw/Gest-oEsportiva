@@ -138,6 +138,12 @@ RATE_LIMITS: list[tuple[str, int, int]] = [
 DEFAULT_LIMIT = (240, 900)  # 240 req / 15 min por IP
 
 
+# Rotas fora do rate limit. O health check do Render bate a cada poucos
+# segundos do mesmo IP: contá-lo esgotaria a cota (429 = instância "unhealthy")
+# e amarraria a saúde do serviço a três escritas no Mongo por sonda.
+RATE_LIMIT_EXEMPT_PATHS = {"/api/health"}
+
+
 async def _allow(path: str, ip: str) -> tuple[bool, int | None]:
     """Sliding-window rate limit backed by MongoDB with atomic operations.
 
@@ -339,7 +345,9 @@ def register_middlewares(app: FastAPI) -> None:
 
             return resp
 
-        allowed, _retry = await _allow(request.url.path, _ip(request))
+        exempt = request.method == "OPTIONS" or request.url.path in RATE_LIMIT_EXEMPT_PATHS
+
+        allowed = True if exempt else (await _allow(request.url.path, _ip(request)))[0]
 
         if not allowed:
             trace_id = str(uuid.uuid4())
@@ -364,7 +372,15 @@ def register_middlewares(app: FastAPI) -> None:
         response = await call_next(request)
 
         if request.url.path in ("/", "/index.html") or request.url.path.startswith("/api/auth"):
-            if not request.cookies.get("gesp_csrf"):
+            # Não sobrescrever um token que o handler acabou de emitir (ex.:
+            # /api/auth/google-config devolve o token no corpo). Dois Set-Cookie
+            # diferentes fazem o navegador guardar o último, que não bate com o
+            # token do corpo, e o double-submit falha com 403.
+            already_set = any(
+                header.startswith("gesp_csrf=") for header in response.headers.getlist("set-cookie")
+            )
+
+            if not request.cookies.get("gesp_csrf") and not already_set:
                 set_csrf_cookie(response)
 
         response.headers["Content-Security-Policy"] = csp_header(nonce)

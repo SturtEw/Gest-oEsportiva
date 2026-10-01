@@ -3,6 +3,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Logs sem buffer (aparecem na hora no painel do Render) e sem .pyc no container.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
 # psycopg/pymongo nao precisam de toolchain pesada, mas o build do bcrypt/cryptography
 # pode precisar. Mantemos gcc/headers numa camada descartavel.
 #
@@ -35,4 +40,7 @@ EXPOSE 8000
 # Forma JSON com 'sh -c' (em vez da forma shell crua): expande ${PORT} e ao mesmo
 # tempo mantem o PID 1 correto, para que SIGTERM chegue ao uvicorn e o Render
 # consiga desligar o container graciosamente em vez de mata-lo apos o timeout.
-CMD ["sh", "-c", "exec python -m uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+#
+# --proxy-headers/--forwarded-allow-ips: o TLS termina no proxy do Render. Sem
+# isso o uvicorn enxerga http:// e o IP do proxy como cliente de todo mundo.
+CMD ["sh", "-c", "exec python -m uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 20"]
