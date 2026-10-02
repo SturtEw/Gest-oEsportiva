@@ -16,8 +16,11 @@ export interface CreateScheduledClass {
 
 export const teacherApi = {
   dashboard: () => request<{ classes: TeacherClass[] }>('/api/professor/dashboard'),
-  students: () => request<{ students: Array<{ id: string; nome: string; turma_id: string }> }>('/api/professor/students'),
-  questions: (studentId: string) => request<PublicMessage[]>(`/api/professor/students/${encodeURIComponent(studentId)}/questions`),
+  // Named roster/studentQuestions, not students/questions: those keys already
+  // exist in adminApi/studentApi, and spreading teacherApi last into `api`
+  // overwrote them — the student area then called the professor route (403).
+  roster: () => request<{ students: Array<{ id: string; nome: string; turma_id: string }> }>('/api/professor/students'),
+  studentQuestions: (studentId: string) => request<PublicMessage[]>(`/api/professor/students/${encodeURIComponent(studentId)}/questions`),
   replyToStudent: (studentId: string, texto: string) => request<PublicMessage>(`/api/professor/students/${encodeURIComponent(studentId)}/questions`, { method: 'POST', body: JSON.stringify({ texto }) }),
 
   // ---- Conquistas ----

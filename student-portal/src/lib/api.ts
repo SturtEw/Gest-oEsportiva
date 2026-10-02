@@ -16,6 +16,8 @@ import { trainingsApi } from './api/trainings'
 import type { TrainingTournament } from '@/lib/types'
 
 export { ApiError, request, API_BASE }
+/** Domain modules merged into `api`. Keys must be unique across them (see api.test.ts). */
+export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi }
 export { teacherApi }
 export type { CreateScheduledClass } from './api/teacher'
 export type { AccountStatusResponse, RegisterInput } from './api/auth'
@@ -32,8 +34,8 @@ export const api = {
   adminStudents: adminApi.students,
   adminTeacherWorkspace: adminApi.teacherWorkspace,
   teacherDashboard: teacherApi.dashboard,
-  teacherStudents: teacherApi.students,
-  teacherQuestions: teacherApi.questions,
+  teacherStudents: teacherApi.roster,
+  teacherQuestions: teacherApi.studentQuestions,
   replyToStudent: teacherApi.replyToStudent,
   getTournaments: trainingsApi.getTournaments,
 }
