@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type FormEvent, type ReactNode } from 'react'
 import {
   ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Eye, EyeOff,
-  LockKeyhole, Mail, ShieldCheck, Sparkles, User,
+  LockKeyhole, Mail, ShieldCheck, Sparkles, Ticket, User,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { api, ApiError } from '@/lib/api'
 import { GoogleAuthError, loadGoogleIdentity, mountGoogleSignInButton, type GoogleButtonHandle } from '@/lib/google-identity'
+import { clearInviteFromLocation, formatInviteCode, inviteCodeFromLocation, isCompleteInviteCode, normalizeInviteCode } from '@/lib/invite-code'
 import type { AccountStatus, SessionUser } from '@/lib/types'
 import heroImage from '@/assets/hero.png'
 
@@ -86,7 +88,9 @@ function FloatingLabelInput({
 // ==========================================================================
 
 export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActive, onClearError }: Props) {
-  const [mode, setMode] = useState<FormMode>('login')
+  // A teacher's signup link (?convite=CODE) opens straight on the student signup.
+  const [mode, setMode] = useState<FormMode>(() => (inviteCodeFromLocation() ? 'register' : 'login'))
+  const [inviteCode, setInviteCode] = useState(() => inviteCodeFromLocation())
   const [accountState, setAccountState] = useState<{status: AccountStatus; name: string; email: string; message?: string} | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -233,6 +237,10 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
 
   const submitRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (inviteCode && !isCompleteInviteCode(inviteCode)) {
+      setLocalError('O código de convite tem 8 caracteres. Confira o código ou deixe o campo em branco.')
+      return
+    }
     setLoading(true); resetFeedback()
     try {
       // O cadastro público cria somente alunos. Contas de professor são
@@ -247,8 +255,12 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
         data_nascimento: birthDate,
         documento_tipo: documentType,
         documento_numero: documentNumber,
+        ...(inviteCode ? { codigo_convite: inviteCode } : {}),
       })
       setGoogleToken(null)
+      clearInviteFromLocation()
+      if (result.turma) toast.success(`Conta criada! Você já faz parte da turma ${result.turma.nome}.`)
+      else if (result.aviso_convite) toast.warning(result.aviso_convite)
       if (result.user && result.status === 'ativo') onRegistrationActive(result.user)
       else setAccountState({
         status: 'pendente',
@@ -570,6 +582,27 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
               <div className="form-text mt-1 ps-1 text-ge-muted" style={{ fontSize: 12 }}>
                 Não envie fotos. O documento fica protegido.
               </div>
+            </div>
+          </div>
+
+          <div>
+            <FloatingLabelInput
+              id="signup-invite-code"
+              label="Código de convite (opcional)"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={9}
+              value={formatInviteCode(inviteCode)}
+              onValueChange={(value) => setInviteCode(normalizeInviteCode(value))}
+              icon={Ticket}
+              aria-describedby="signup-invite-help"
+              className="font-monospace"
+            />
+            <div id="signup-invite-help" className="form-text mt-1 ps-1 text-ge-muted" style={{ fontSize: 12 }}>
+              {isCompleteInviteCode(inviteCode)
+                ? 'Com este código você entra direto na turma do professor.'
+                : 'Recebeu um código do professor? Digite aqui. Sem código, você procura sua turma depois do cadastro.'}
             </div>
           </div>
 

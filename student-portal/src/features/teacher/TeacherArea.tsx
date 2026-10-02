@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, LayoutDashboard, MessageCircle, Send, Trophy, Users, X } from 'lucide-react'
+import { CalendarDays, CircleHelp, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,14 +12,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useImpersonation } from '@/hooks/useImpersonation'
+import { useTeacherEnrollment } from '@/hooks/useTeacherEnrollment'
 import { api, teacherApi } from '@/lib/api'
 import { formatDateTime, firstName, initials } from '@/lib/formatters'
 import type { PublicMessage, TeacherClass } from '@/lib/types'
 import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
+import { TeacherEnrollmentPanel } from './enrollment/TeacherEnrollmentPanel'
 
-type View = 'dashboard' | 'turmas' | 'alunos' | 'agenda'
+type View = 'dashboard' | 'turmas' | 'convites' | 'alunos' | 'agenda'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -44,6 +46,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const { isImpersonating } = useImpersonation()
   const onInvalidate = useCallback(() => setRevision((value) => value + 1), [])
   const connection = useRealtimeSync({ audience: 'teacher', enabled: !isImpersonating, onInvalidate })
+  // Approving a request changes the roster, so mutations bump the shared revision.
+  const enrollment = useTeacherEnrollment({ revision, onChanged: onInvalidate })
 
   useEffect(() => {
     let active = true
@@ -80,9 +84,10 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const nav: NavItem[] = useMemo(() => [
     { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
     { id: 'turmas', label: 'Turmas', icon: Users, badge: classes.length || undefined },
+    { id: 'convites', label: 'Convites e pedidos', icon: UserPlus, badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' },
     { id: 'alunos', label: 'Alunos', icon: Trophy },
     { id: 'agenda', label: 'Agenda', icon: CalendarDays },
-  ], [classes.length])
+  ], [classes.length, enrollment.pendingCount])
 
   const sendReply = async (event: FormEvent) => {
     event.preventDefault()
@@ -238,6 +243,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
             </div>
           )
         )}
+
+        {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
         {view === 'agenda' && <AgendaView revision={revision} />}
       </AppShell>

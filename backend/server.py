@@ -35,10 +35,12 @@ from lib.security import decode_token, is_token_revoked
 from models.models import User
 from routers.admin import router as admin_router
 from routers.auth import _password_reset_email_html, children_router, router as auth_router
+from routers.class_enrollment import router as class_enrollment_router
 from routers.professor import router as professor_router
 from routers.student import router as student_router
 from routers.teacher_portal import router as teacher_portal_router
 from routers.treinamentos_torneios import router as treinamentos_torneios_router
+from services.root_admin import ensure_root_admin
 
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -80,7 +82,8 @@ def _validate_env_security() -> None:
         if os.environ.get("ROOT_ADMIN_PASSWORD"):
             logger.warning(
 
-                "[SECURITY] ROOT_ADMIN_PASSWORD ainda está no ambiente após o bootstrap. Remova-o.",
+                "[SECURITY] ROOT_ADMIN_PASSWORD (bootstrap legado) ainda está no ambiente e não é usado pela API. "
+                "Remova-o; a conta raiz agora vem de ADMIN_USER/ADMIN_PASSWORD.",
 
             )
 
@@ -251,6 +254,13 @@ async def _email_queue_worker(stop_event: asyncio.Event) -> None:
 async def lifespan(_app: FastAPI):
     # The mongo_lifespan context manager handles connection + indexes
     async with mongo_lifespan(_app):
+        # ADMIN_USER / ADMIN_PASSWORD from the Render environment group are the
+        # root account's credentials. A failure here must not take the API down.
+        try:
+            await ensure_root_admin()
+        except Exception:
+            logger.exception("[root-admin] Falha ao sincronizar a conta raiz com o ambiente.")
+
         hub.start()
 
         email_stop = asyncio.Event()
@@ -355,6 +365,9 @@ app.include_router(teacher_portal_router)
 
 
 app.include_router(treinamentos_torneios_router)
+
+
+app.include_router(class_enrollment_router)
 
 
 

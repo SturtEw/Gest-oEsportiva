@@ -45,6 +45,36 @@ export interface AdminTeacher { id: string; nome: string; email: string }
 export interface TeacherClass { id: string; nome: string; modalidade: string; ano: number; capacidade: number; total_alunos: number }
 export interface RealtimeEvent { type: 'invalidate'; section: string; updatedAt: string; mode?: ConnectionStatus }
 
+// ---------- Matrícula em turmas: convites e solicitações ----------
+export type JoinRequestStatus = 'pendente' | 'aprovada' | 'rejeitada' | 'cancelada'
+export interface JoinedClass { id: string; nome: string; modalidade: string; ano: number | null }
+export interface AvailableClass extends JoinedClass {
+  professor_nome: string | null
+  capacidade: number
+  vagas: number
+  lotada: boolean
+  /** The signed-in student already has a pending request for this class. */
+  solicitacao_pendente: boolean
+}
+export interface JoinRequest {
+  id: string
+  aluno_id: string
+  aluno_nome: string
+  turma_id: string
+  turma_nome: string
+  modalidade: string | null
+  professor_nome: string | null
+  status: JoinRequestStatus
+  mensagem: string | null
+  motivo_rejeicao: string | null
+  dataSolicitacao: string
+  dataDecisao: string | null
+}
+export interface StudentEnrollmentStatus { turma_id: string | null; requests: JoinRequest[] }
+export interface ClassInvite { id: string; codigo: string; turma_id: string; ativo: boolean; usos: number; expira_em: string | null; expirado: boolean; dataCriacao: string }
+export interface TeacherInviteClass { turma_id: string; turma_nome: string; modalidade: string; ano: number | null; capacidade: number; total_alunos: number; convite: ClassInvite | null }
+export interface TeacherJoinRequests { requests: JoinRequest[]; pendentes: number }
+
 // ---------- Área do professor: agenda e visão geral ----------
 /** A scheduled class session. `data_aula` and `hora_inicio` are calendar values, not instants. */
 export interface ScheduledClass {

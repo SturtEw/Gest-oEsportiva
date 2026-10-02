@@ -547,6 +547,65 @@ class FilaEsperaCreate(BaseModel):
     prioridade: PrioridadeFila = "normal"
 
 
+# ---------- Convites e solicitações de entrada em turma ----------
+StatusSolicitacaoTurma = Literal["pendente", "aprovada", "rejeitada", "cancelada"]
+
+
+class TurmaConvite(BaseModel):
+    """Invite code a teacher shares so a student enters the class directly.
+
+    `codigo` is globally unique (unique index) and belongs to exactly one turma.
+    At most one invite per turma is active: generating a new one deactivates the
+    previous, so a leaked code can always be rotated.
+    """
+
+    id: str = Field(default_factory=novo_id)
+
+    codigo: str = Field(pattern=r"^[A-HJ-NP-Z2-9]{8}$")
+
+    turma_id: str
+
+    professor_id: str
+
+    ativo: bool = True
+
+    usos: int = 0
+
+    expira_em: Optional[datetime] = None
+
+    dataCriacao: datetime = Field(default_factory=now_utc)
+
+    revogado_em: Optional[datetime] = None
+
+
+class SolicitacaoTurma(BaseModel):
+    """A student's request to join a class, decided by that class's teacher."""
+
+    id: str = Field(default_factory=novo_id)
+
+    aluno_id: str
+
+    aluno_nome: str
+
+    turma_id: str
+
+    # Snapshot of the class teacher at request time. Decisions still re-check the
+    # turma's *current* professor_id, so a reassigned class moves its queue along.
+    professor_id: str
+
+    status: StatusSolicitacaoTurma = "pendente"
+
+    mensagem: Optional[str] = Field(default=None, max_length=300)
+
+    motivo_rejeicao: Optional[str] = Field(default=None, max_length=300)
+
+    decidido_por: Optional[str] = None
+
+    dataSolicitacao: datetime = Field(default_factory=now_utc)
+
+    dataDecisao: Optional[datetime] = None
+
+
 # ---------- Comunicados ----------
 class DestinatarioResultado(BaseModel):
     destinatario: str

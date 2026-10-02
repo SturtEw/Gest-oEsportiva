@@ -683,6 +683,41 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    "turma_convites": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        # Each invite code is unique across the whole school, not just per class.
+        IndexModel([("codigo", ASCENDING)], name="codigo", unique=True),
+
+        IndexModel([("turma_id", ASCENDING), ("ativo", ASCENDING)], name="turma_ativo"),
+
+    ],
+
+    "solicitacoes_turma": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        # A student keeps at most one pending request; the app checks first, this
+        # index closes the race between two concurrent submissions.
+        IndexModel(
+
+            [("aluno_id", ASCENDING)],
+
+            name="aluno_pendente_unico",
+
+            unique=True,
+
+            partialFilterExpression={"status": "pendente"},
+
+        ),
+
+        IndexModel([("aluno_id", ASCENDING), ("dataSolicitacao", DESCENDING)], name="aluno_data"),
+
+        IndexModel([("turma_id", ASCENDING), ("status", ASCENDING), ("dataSolicitacao", DESCENDING)], name="turma_status_data"),
+
+    ],
+
     "comunicados": [
 
         IndexModel([("id", ASCENDING)], name="id", unique=True),

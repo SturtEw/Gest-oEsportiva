@@ -60,3 +60,8 @@ def test_view_path_allowlist():
     assert not impersonation.allowed_view_path("/api/student/portal", "professor")
     assert not impersonation.allowed_view_path("/api/student/me/ranking-preference", "aluno")
     assert not impersonation.allowed_view_path("/api/admin/students", "aluno")
+    # Enrollment: read-only views are allowed, each for its own role only.
+    assert impersonation.allowed_view_path("/api/enrollment/requests/me", "aluno")
+    assert impersonation.allowed_view_path("/api/enrollment/teacher/requests", "professor")
+    assert not impersonation.allowed_view_path("/api/enrollment/teacher/invites", "aluno")
+    assert not impersonation.allowed_view_path("/api/enrollment/join", "aluno")

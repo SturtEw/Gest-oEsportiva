@@ -13,12 +13,15 @@ TARGET_HEADER = "X-Impersonate-Target"
 def allowed_view_path(path: str, role: str) -> bool:
     parts = path.split("/")
     if role == "aluno" and (
-        path == "/api/student/portal" or
+        path in {"/api/student/portal", "/api/enrollment/classes", "/api/enrollment/requests/me"} or
         (len(parts) == 5 and parts[1:3] == ["api", "student"] and parts[4] in {"ranking", "questions", "schedule"} and bool(parts[3]))
     ):
         return True
     if role == "professor" and (
-        path in {"/api/professor/dashboard", "/api/professor/students", "/api/professor/agenda", "/api/professor/visao-geral"} or
+        path in {
+            "/api/professor/dashboard", "/api/professor/students", "/api/professor/agenda", "/api/professor/visao-geral",
+            "/api/enrollment/teacher/invites", "/api/enrollment/teacher/requests",
+        } or
         (len(parts) == 6 and parts[1:4] == ["api", "professor", "students"] and parts[5] == "questions" and bool(parts[4]))
     ):
         return True

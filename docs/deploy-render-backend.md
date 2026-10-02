@@ -106,20 +106,37 @@ Rode três vezes → `JWT_SECRET`, `CSRF_HMAC_SECRET`, `DOCUMENT_HMAC_SECRET`.
 - **Health Check Path**: `/api/health`
 - **Region**: a mais próxima dos usuários (`Ohio`/`Oregon` nos EUA; não há região BR no Render)
 
-## 4. Bootstrap do admin raiz (uma única vez)
+## 4. Admin raiz (gerenciado pelo ambiente)
 
-O login por e-mail/senha e o primeiro administrador precisam de um usuário raiz.
-Com o serviço no ar, use o **Shell** do Render (aba *Shell*):
+A conta raiz vem de duas variáveis definidas num **Environment Group** do Render
+(*Dashboard → Environment Groups*), vinculado ao serviço **`gestaoesportiva-api`**
+(*serviço → Environment → Link Environment Group*):
 
-```bash
-ROOT_ADMIN_EMAIL=seu@email.com \
-ROOT_ADMIN_NAME="Administrador raiz" \
-ROOT_ADMIN_PASSWORD='SenhaForte!2026' \
-python scripts/bootstrap_root_admin.py
-```
+| Variável | Valor |
+|---|---|
+| `ADMIN_USER` | **e-mail** do admin raiz (o login é por e-mail) |
+| `ADMIN_PASSWORD` | senha com pelo menos 10 caracteres |
+| `ADMIN_NAME` | opcional — nome exibido (padrão: "Administrador raiz") |
 
-Depois **remova `ROOT_ADMIN_PASSWORD`** do ambiente do Render — o boot emite
-justamente esse aviso de segurança.
+A cada boot (`services/root_admin.py`) a API garante que o login com esses
+valores funcione:
+
+- sem conta raiz → cria a conta (ativa, e-mail verificado);
+- conta raiz existente → aplica a senha do ambiente, reativa, remove bloqueios
+  por tentativas erradas e, se `ADMIN_USER` mudou, move a conta para o novo e-mail;
+- ao trocar a senha, as sessões abertas com a senha antiga são encerradas.
+
+**Para trocar a senha**: altere `ADMIN_PASSWORD` no grupo e faça um redeploy
+(*Manual Deploy → Deploy latest commit*). Uma senha trocada dentro do app volta
+a ser `ADMIN_PASSWORD` no próximo boot — o painel do Render é a fonte da verdade.
+
+O log do boot mostra o resultado em uma linha `[root-admin] …` (sem expor senha).
+Se `ADMIN_USER` não for um e-mail, a senha for curta ou o e-mail já pertencer a
+uma conta comum (aluno/professor), a conta **não** é alterada e o log diz o motivo.
+
+> O script `scripts/bootstrap_root_admin.py` (variáveis `ROOT_ADMIN_*`) continua
+> disponível para quem não quer credenciais no ambiente, mas a API não lê as
+> variáveis `ROOT_ADMIN_*`.
 
 > Cadastro de professor agora é **só por convite**: o admin raiz cria a conta pelo
 > painel (`/api/admin/teacher-applications` para aprovar, e o provisionamento via
@@ -195,7 +212,8 @@ python scripts/smoke_render_config.py
 | *Refused to connect … violates the Content Security Policy* | Host da API ausente no `connect-src` da CSP (`firebase.json`) |
 | WebSocket `/api/realtime` falha | Origem fora de `FRONTEND_ORIGINS` |
 | App "dorme" e a 1ª request demora ~50s | Plano free do Render hiberna; use `starter` ou superior |
-| Aviso `ROOT_ADMIN_PASSWORD ainda está no ambiente` | Só aparece se a variável estiver realmente definida no painel — remova após o bootstrap |
+| Aviso `ROOT_ADMIN_PASSWORD (bootstrap legado) ainda está no ambiente` | Variável antiga definida no painel; a API usa `ADMIN_USER`/`ADMIN_PASSWORD` — remova-a |
+| Admin raiz não entra | Veja a linha `[root-admin]` no log do boot. Sem ela: o Environment Group não está vinculado a `gestaoesportiva-api` (ou não houve redeploy depois de criá-lo) |
 
 ---
 

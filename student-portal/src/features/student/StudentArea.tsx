@@ -5,13 +5,13 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Toaster } from '@/components/ui/sonner'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 import { AchievementSection } from '@/features/achievements/AchievementSection'
 import { AnnouncementsSection } from '@/features/announcements/AnnouncementsSection'
 import { AssessmentSection } from '@/features/assessments/AssessmentSection'
 import { AttendanceSection } from '@/features/attendance/AttendanceSection'
 import { ClassSummary } from '@/features/class/ClassSummary'
+import { EnrollmentHome } from '@/features/enrollment/EnrollmentHome'
 import { HomeDashboard } from '@/features/home/HomeDashboard'
 import { QuestionThread } from '@/features/questions/QuestionThread'
 import { RecordsSection } from '@/features/records/RecordsSection'
@@ -49,6 +49,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
   const [activeSection, setActiveSection] = useState<PortalSection>('inicio')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [forcedPrivate, setForcedPrivate] = useState(false)
+  const [enrollmentRevision, setEnrollmentRevision] = useState(0)
   const { isImpersonating } = useImpersonation()
   const portal = useStudentPortal(studentId)
   const questions = useQuestionThread(studentId)
@@ -62,6 +63,8 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
   const refresh = useCallback(() => { portalRefreshRef.current(); questionsRefreshRef.current() }, [])
   const onInvalidate = useCallback((event: { section: string }) => {
     if (event.section === 'questions' || event.section === 'portal') questionsRefreshRef.current()
+    // A teacher's decision on a join request reaches the student as "enrollment".
+    if (event.section === 'enrollment' || event.section === 'portal') setEnrollmentRevision((value) => value + 1)
     portalRefreshRef.current()
   }, [])
   const connection = useRealtimeSync({ audience: 'student', alunoId: studentId, enabled: !isImpersonating, onInvalidate })
@@ -73,8 +76,15 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     await portal.setRankingPreference(value)
   }, [portal.setRankingPreference])
 
+  // A student account without a class lands on "find your class" (invite code or
+  // join request) instead of an empty dashboard. Guardians keep the regular view.
+  const needsClass = user.tipo === 'aluno' && Boolean(snapshot) && !snapshot?.turma
+
   const renderSection = () => {
     if (!snapshot) return null
+    if (needsClass && (activeSection === 'inicio' || activeSection === 'turma')) {
+      return <EnrollmentHome revision={enrollmentRevision} onJoined={refresh} readOnly={isImpersonating} />
+    }
     switch (activeSection) {
       case 'inicio': return <HomeDashboard snapshot={snapshot} onOpenSection={goTo} />
       case 'turma': return <ClassSummary turma={snapshot.turma} professorNome={snapshot.professor_nome} />
@@ -112,6 +122,5 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       </main>
     </div>
     {!mobileMenuOpen && <nav aria-label="Navegação rápida" className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-2 shadow-[0_-6px_20px_rgba(28,55,42,0.045)] backdrop-blur-md lg:hidden"><div className="mx-auto flex max-w-xl items-stretch justify-around gap-0.5">{sections.filter((section) => ['inicio', 'presencas', 'avaliacoes', 'conquistas', 'treinamentos', 'duvidas'].includes(section.id)).map((section) => { const Icon = section.icon; return <Button key={section.id} variant="ghost" onClick={() => goTo(section.id)} aria-current={activeSection === section.id ? 'page' : undefined} className={`h-auto min-h-12 min-w-0 flex-1 flex-col gap-1 rounded-lg px-1 py-1 text-[9px] ${activeSection === section.id ? 'bg-[#EAF0E5] text-[#234E40]' : 'text-muted-foreground'}`}><Icon aria-hidden="true" className="size-[18px]" /><span className="max-w-full truncate">{section.short}</span></Button> })}</div></nav>}
-    <Toaster position="bottom-right" />
   </div>
 }

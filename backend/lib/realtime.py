@@ -256,6 +256,18 @@ class RealtimeHub:
         elif collection == "admin_notifications":
             await self._invalidate("admins", "teacher_applications")
 
+        elif collection == "solicitacoes_turma":
+            # Join requests concern both sides: the class teacher's queue and the
+            # student's status card.
+            if document.get("professor_id"):
+                await self._invalidate(f"user:{document['professor_id']}", "enrollment")
+
+            if document.get("aluno_id"):
+                await self._invalidate(f"student:{document['aluno_id']}", "enrollment")
+
+        elif collection == "turma_convites" and document.get("professor_id"):
+            await self._invalidate(f"user:{document['professor_id']}", "enrollment")
+
 
     async def _watch_database(self) -> None:
         """Watch for database changes with robust error handling for standalone MongoDB."""

@@ -70,6 +70,12 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false
 
+      # ─── Admin raiz ────────────────────────────────────────────────────
+      # ADMIN_USER (e-mail) e ADMIN_PASSWORD ficam num Environment Group do
+      # Render vinculado a ESTE serviço; a API cria/sincroniza a conta raiz a
+      # cada boot (services/root_admin.py). Não declare as chaves aqui: uma
+      # variável do serviço, mesmo vazia, sobrepõe o valor do grupo.
+
       # ─── E-mail (opcional) ─────────────────────────────────────────────
       - key: EMERGENT_EMAIL_KEY
         sync: false

@@ -13,14 +13,16 @@ import { studentApi } from './api/student'
 import { adminApi } from './api/admin'
 import { teacherApi } from './api/teacher'
 import { trainingsApi } from './api/trainings'
+import { enrollmentApi } from './api/enrollment'
 import type { TrainingTournament } from '@/lib/types'
 
 export { ApiError, request, API_BASE }
 /** Domain modules merged into `api`. Keys must be unique across them (see api.test.ts). */
-export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi }
-export { teacherApi }
+export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi }
+export { teacherApi, enrollmentApi }
 export type { CreateScheduledClass } from './api/teacher'
-export type { AccountStatusResponse, RegisterInput } from './api/auth'
+export type { AccountStatusResponse, RegisterInput, RegisterResponse } from './api/auth'
+export type { JoinRequestScope } from './api/enrollment'
 
 export const api = {
   ...authApi,
@@ -28,6 +30,7 @@ export const api = {
   ...adminApi,
   ...teacherApi,
   ...trainingsApi,
+  ...enrollmentApi,
   // Aliases preserving the previous flat method names used by call sites.
   adminSummary: adminApi.summary,
   adminNotifications: adminApi.notifications,

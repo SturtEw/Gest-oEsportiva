@@ -11,9 +11,13 @@ import { ImpersonationBanner } from '@/components/ImpersonationBanner'
 import { api } from '@/lib/api'
 import type { LinkedChild } from '@/lib/types'
 
-// Inner component that has access to impersonation context
-function AppContent() {
-  const session = useSession()
+type Session = ReturnType<typeof useSession>
+
+// Inner component that has access to impersonation context. It receives the
+// session from App instead of calling useSession() again: two hook instances
+// meant two independent GET /api/auth/me on every load (and two states that
+// could disagree after login).
+function AppContent({ session }: { session: Session }) {
   const { effectiveRole, effectiveIsRootAdmin, isImpersonating, target } = useImpersonation()
   const [children, setChildren] = useState<LinkedChild[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | undefined>()
@@ -106,7 +110,7 @@ function AppContent() {
     return (
       <>
         <ImpersonationBanner />
-        <AdminWorkspace adminName={user.nome} onLogout={() => void session.logout()} />
+        <AdminWorkspace adminName={user.nome} sessionUser={user} onLogout={() => void session.logout()} />
         {toaster}
       </>
     )
@@ -268,7 +272,7 @@ export default function App() {
       userIsRootAdmin={user?.is_root_admin ?? false}
       userId={user?.id ?? null}
     >
-      <AppContent />
+      <AppContent session={session} />
     </ImpersonationProvider>
   )
 }

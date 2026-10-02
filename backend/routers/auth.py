@@ -61,6 +61,7 @@ from lib.security import (
 
 
 from models.models import LoginInput, User
+from services.class_enrollment import class_summary, link_student_to_class, normalize_invite_code, record_invite_use, resolve_invite
 
 
 class ConfirmEmailInput(BaseModel):
@@ -102,6 +103,18 @@ class RegisterAccountInput(BaseModel):
     formacao_academica: str | None = Field(default=None, min_length=2, max_length=160)
 
     area_atuacao: str | None = Field(default=None, min_length=2, max_length=160)
+
+    # Optional teacher invite. A valid code puts the new student straight into the
+    # teacher's class; without one the student searches classes after signup.
+    codigo_convite: str | None = Field(default=None, max_length=20)
+
+
+    @field_validator("codigo_convite")
+
+    @classmethod
+
+    def normalize_invite(cls, value: str | None) -> str | None:
+        return normalize_invite_code(value) or None
 
 
     @field_validator("nome")
@@ -373,6 +386,13 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
         if birth >= today_in_app_tz():
             raise HTTPException(status_code=400, detail="Informe uma data de nascimento válida")
 
+    # Validate the invite BEFORE creating anything: a mistyped code must not leave
+    # behind an account the student then has to untangle with the school.
+    invite = invited_class = None
+
+    if payload.tipo == "aluno" and payload.codigo_convite:
+        invite, invited_class = await resolve_invite(payload.codigo_convite)
+
     user_id = str(uuid.uuid4())
 
     student_id = str(uuid.uuid4()) if payload.tipo == "aluno" else None
@@ -483,6 +503,25 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
         except Exception as exc:
             logging.getLogger(__name__).error('{"event": "confirmation_email_failed", "email": "%s", "error": "%s"}', email, exc)
 
+    joined_class = None
+
+    invite_warning = None
+
+    if invite and invited_class and student_id:
+        # The code was valid a moment ago; the class can still fill up in between.
+        # The account stays created either way — the student can search classes.
+        try:
+            await link_student_to_class(student_id, invited_class)
+
+            await record_invite_use(invite["id"])
+
+            joined_class = class_summary(invited_class)
+
+            await publish_user_event(invited_class["professor_id"], "enrollment")
+
+        except HTTPException as exc:
+            invite_warning = f"Sua conta foi criada, mas não foi possível entrar na turma: {exc.detail}"
+
     if payload.tipo == "professor":
         await db.admin_notifications.insert_one({
 
@@ -514,7 +553,19 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
 
         await publish_event(student_id or "", "portal")
 
-    return {"status": "ativo", "requires_approval": False, "user": {"id": user_id, "nome": account_name, "email": email, "tipo": "aluno", "status": "ativo", "aluno_id": student_id, "filhos_ids": [], "is_root_admin": False}}
+    return {
+
+        "status": "ativo",
+
+        "requires_approval": False,
+
+        "user": {"id": user_id, "nome": account_name, "email": email, "tipo": "aluno", "status": "ativo", "aluno_id": student_id, "filhos_ids": [], "is_root_admin": False},
+
+        "turma": joined_class,
+
+        "aviso_convite": invite_warning,
+
+    }
 
 
 
@@ -1084,11 +1135,16 @@ async def resend_confirmation(payload: ResendConfirmationInput):
 
 
 
-@router.post("/logout", status_code=204)
+@router.post("/logout", status_code=204, response_class=Response)
 
-async def logout(response: Response, _user: User = Depends(get_current_user)):
+async def logout(_user: User = Depends(get_current_user)) -> Response:
     await revoke_user_tokens(_user.id)
 
+    # Build the 204 ourselves. Returning the injected `response: Response`
+    # parameter is a bug: that object is FastAPI's header/cookie accumulator and
+    # carries status_code=None, so uvicorn crashed with KeyError: None (HTTP 500)
+    # after the tokens had already been revoked.
+    response = Response(status_code=204)
     clear_session_cookie(response)
 
     return response

@@ -16,14 +16,16 @@ import { api } from '@/lib/api'
 import { KpiCard } from '@/features/teacher/dashboard/KpiCard'
 import { firstName, formatDate, initials } from '@/lib/formatters'
 import { GoogleAuthError, mountGoogleSignInButton } from '@/lib/google-identity'
-import type { AdminClass, AdminTeacher, StudentPortalSnapshot, TeacherApplication, UnassignedStudent } from '@/lib/types'
+import type { AdminClass, AdminTeacher, SessionUser, StudentPortalSnapshot, TeacherApplication, UnassignedStudent } from '@/lib/types'
 import { RoleSelector } from '@/components/RoleSelector'
 
 type AdminTab = 'teachers' | 'students' | 'classes' | 'teacher-tools' | 'student-inspection' | 'account'
 interface Summary { professores_pendentes: number; notificacoes_pendentes: number; alunos_sem_turma: number; turmas: number }
 interface TeacherWorkspaceClass { id: string; nome: string; modalidade: string; ano: number; professor_nome: string; alunos: Array<{id: string; nome: string}> }
 
-export function AdminWorkspace({ adminName, onLogout }: { adminName: string; onLogout: () => void }) {
+// The account card reads the session the App already resolved. Fetching
+// /api/auth/me again here repeated the call on every load and every realtime refresh.
+export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName: string; sessionUser: SessionUser; onLogout: () => void }) {
   const [tab, setTab] = useState<AdminTab>('teachers')
   const [summary, setSummary] = useState<Summary>({ professores_pendentes: 0, notificacoes_pendentes: 0, alunos_sem_turma: 0, turmas: 0 })
   const [applications, setApplications] = useState<TeacherApplication[]>([])
@@ -54,10 +56,10 @@ export function AdminWorkspace({ adminName, onLogout }: { adminName: string; onL
   const [inspectionLoading, setInspectionLoading] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const [adminEmail, setAdminEmail] = useState<string>('')
-  const [adminHasPassword, setAdminHasPassword] = useState(false)
-  const [googleLinked, setGoogleLinked] = useState(false)
-  const [googleEmail, setGoogleEmail] = useState<string>('')
+  const adminEmail = sessionUser.email ?? ''
+  const adminHasPassword = Boolean(sessionUser.tem_senha ?? true)
+  const [googleLinked, setGoogleLinked] = useState(Boolean(sessionUser.google_sub))
+  const [googleEmail, setGoogleEmail] = useState<string>(sessionUser.google_email ?? '')
   const [googleClientId, setGoogleClientId] = useState<string | null>(null)
   const [googleConfigLoaded, setGoogleConfigLoaded] = useState(false)
   const [googleLinkBusy, setGoogleLinkBusy] = useState(false)
@@ -79,10 +81,9 @@ export function AdminWorkspace({ adminName, onLogout }: { adminName: string; onL
       api.classes(),
       api.approvedTeachers(),
       api.adminTeacherWorkspace(),
-      api.session(),
       api.googleConfig(),
     ])
-      .then(([nextSummary, nextApplications, nextStudents, nextClasses, nextTeachers, nextWorkspace, sessionPayload, googleConfig]) => {
+      .then(([nextSummary, nextApplications, nextStudents, nextClasses, nextTeachers, nextWorkspace, googleConfig]) => {
         if (!active) return
         setSummary(nextSummary)
         setApplications(nextApplications.applications)
@@ -90,13 +91,6 @@ export function AdminWorkspace({ adminName, onLogout }: { adminName: string; onL
         setClasses(nextClasses.classes)
         setTeachers(nextTeachers.teachers)
         setTeacherWorkspace(nextWorkspace.classes)
-        const u = sessionPayload?.user
-        if (u) {
-          setAdminEmail(u.email ?? '')
-          setAdminHasPassword(Boolean(u.tem_senha ?? true))
-          setGoogleLinked(Boolean(u.google_sub))
-          setGoogleEmail(u.google_email ?? '')
-        }
         if (googleConfig?.client_id) setGoogleClientId(googleConfig.client_id)
       })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados administrativos.') })
