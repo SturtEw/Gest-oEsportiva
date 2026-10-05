@@ -4,7 +4,8 @@
  */
 import { useImpersonation } from '@/hooks/useImpersonation'
 import { X, User, Shield, Eye } from 'lucide-react'
-import { cn } from 'cn'
+// No `cn` here: this banner is in the initial bundle and its classes never
+// conflict, so plain concatenation keeps tailwind-merge out of the entry chunk.
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
@@ -36,10 +37,10 @@ export function ImpersonationBanner() {
   const roleColor = ROLE_COLORS[impersonatedRole]
 
   return (
-    <div role="status" className={cn('sticky top-0 z-50 border-b', roleColor)}>
+    <div role="status" className={`sticky top-0 z-50 border-b ${roleColor}`}>
       <div className="mx-auto max-w-screen-2xl px-4 py-2 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={cn('flex items-center justify-center rounded-lg px-2 py-1', roleColor)}>
+          <div className={`flex items-center justify-center rounded-lg px-2 py-1 ${roleColor}`}>
             {roleIcon}
           </div>
           <div>
@@ -50,10 +51,7 @@ export function ImpersonationBanner() {
         <button
           type="button"
           onClick={clearImpersonation}
-          className={cn(
-            'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-            'hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2'
-          )}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:outline-offset-2"
           aria-label="Sair da visualização como outro usuário"
         >
           <X className="size-4" aria-hidden="true" />

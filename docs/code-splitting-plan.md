@@ -1,5 +1,34 @@
 # Plano de code-splitting — student-portal
 
+## Resultado (aplicado em 05/10/2026)
+
+Medido com `npm run size` (`scripts/bundle-size.mjs`, gzip nível 9):
+
+| Artefato | Antes | Depois |
+|---|---|---|
+| JS inicial (login) | 850 kB / **248 kB gz**, 1 chunk | 276 kB / **85 kB gz** (`react` 66 + `index` 19) |
+| CSS inicial | 328 kB / **60 kB gz** | 135 kB / **34 kB gz** (sem Bootstrap) |
+| Bootstrap | no CSS inicial | `bootstrap-theme.css` 27 kB gz, só com login/telas de status |
+| Área do aluno | no chunk único | `StudentArea` 9 kB + compartilhado `useRealtimeSync` 52 kB gz; cada seção 1–5 kB |
+| Área do professor | no chunk único | `TeacherArea` 10 kB gz; Atividades 13 kB e Convites 4 kB sob demanda |
+| Admin | no chunk único | `AdminWorkspace` 10 kB gz |
+| Firebase Analytics | no boot | `firebase` 13 kB gz, em `requestIdleCallback`, só em produção |
+
+Etapa por etapa:
+
+- **0/7 — Medição e orçamento:** `npm run size` imprime o relatório e falha acima do orçamento (JS inicial 90 kB, CSS inicial 36 kB, chunk lazy 120 kB, tudo gz). Roda no CI depois do build. O CSS ficou em 36, não 25: é a folha única do Tailwind com todas as utilities do app (~32 kB gz), que o plugin do Vite não divide por rota.
+- **1 — Lazy por tela:** `src/lib/lazy-screens.ts` (login, convite de professor, redefinir senha, telas de status e as três áreas). `prefetchAreaFor()` começa o chunk da área assim que o papel é conhecido. `useSession` agora guarda uma dica em `localStorage`: o cookie de sessão é HttpOnly e o app sempre achava que não havia sessão, então mostrava o login por um instante (e baixava o chunk dele) antes da área.
+- **2 — Firebase adiado:** `src/lib/analytics.ts`. Em dev/test não envia mais page views.
+- **3 — Lazy por seção:** `features/student/sections.ts` e `features/teacher/sections.ts`, com `Suspense` dentro do `SectionErrorBoundary` e prefetch no hover/foco/toque do menu (`AppShell` ganhou `onPrefetch`). No admin a única aba separável (`TeacherInvitesPanel`) é a inicial, então não houve ganho em separá-la.
+- **4 — Bootstrap só onde é usado:** `src/styles/layers.css` fixa a ordem das camadas e é o primeiro CSS de `main.tsx`. `bootstrap-theme.scss` é importado por `LoginScreen` e por `src/screens/*`. A área logada tem a mesma aparência com o Bootstrap carregado (depois do login) e sem ele (após recarregar), conferido no navegador.
+- **5 — Vendor chunks:** `build.rolldownOptions.output.codeSplitting.groups` com `react` e `firebase`. `@base-ui` não foi agrupado: um grupo vira um chunk só, e o login baixaria todos os widgets das áreas.
+- **6 — Fontes:** sem mudança. Os `@font-face` somam ~2 kB gz, e o navegador só baixa o arquivo de um peso quando ele é renderizado.
+- **Chunks antigos após deploy:** `src/lib/chunk-recovery.ts` recarrega uma vez em `vite:preloadError`. Se falhar de novo em 60 s, a seção mostra "Recarregar" (`SectionErrorBoundary`) e o app inteiro cai no `AppErrorBoundary`, sem dependências de UI.
+
+Pendente: os ícones do `lucide-react` viram chunks minúsculos (0,2–0,5 kB) por causa do tree-shaking por rota. Com HTTP/2 e o preload do Vite eles chegam em paralelo; agrupá-los num chunk só colocaria todos no carregamento inicial.
+
+## Plano original
+
 ## Situação atual (build de 03/10/2026)
 
 | Artefato | Tamanho | gzip |

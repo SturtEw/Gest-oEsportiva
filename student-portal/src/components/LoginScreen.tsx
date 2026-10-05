@@ -1,3 +1,6 @@
+// Bootstrap ships with the login chunk (and TeacherInviteScreen, which reuses
+// AuthShell), not with the logged-in areas. Layer order: styles/layers.css.
+import '@/styles/bootstrap-theme.scss'
 import { useEffect, useRef, useState, type ComponentProps, type ComponentType, type FormEvent, type ReactNode } from 'react'
 import {
   ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Eye, EyeOff,

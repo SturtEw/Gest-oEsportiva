@@ -36,6 +36,23 @@ export default defineConfig({
     },
     devSourcemap: true,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Stable vendor chunks (docs/code-splitting-plan.md, step 5): app deploys
+        // change the app chunks' hashes, not these, so returning visitors keep them
+        // cached. Only packages every screen needs (react) or that load on their own
+        // (firebase, idle analytics) are grouped: a group is one chunk, so grouping
+        // @base-ui would make the login download every widget of the logged areas.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'firebase', test: /node_modules[\\/](firebase|@firebase)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   server: {
     // Autorizado: strictPort false permite que o Vite caia para a proxima porta
     // livre (5174, 5175...) em vez de recusar subir quando a 5173 esta presa

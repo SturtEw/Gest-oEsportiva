@@ -1,3 +1,6 @@
+// Layer order first: lazy chunks (Bootstrap with the login) add CSS later, and
+// a layer's position is fixed by the first stylesheet that names it.
+import './styles/layers.css'
 import '@fontsource/dm-sans/400.css'
 import '@fontsource/dm-sans/500.css'
 import '@fontsource/dm-sans/600.css'
@@ -6,22 +9,14 @@ import '@fontsource/manrope/500.css'
 import '@fontsource/manrope/600.css'
 import '@fontsource/manrope/700.css'
 import '@fontsource/manrope/800.css'
+import './index.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import { SectionErrorBoundary } from './components/SectionErrorBoundary'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
+import { scheduleAnalytics } from './lib/analytics'
 import { redirectToCanonicalOrigin } from './lib/canonical-origin'
-import { app as firebaseApp } from './lib/firebase'
-
-// Garante que o Firebase seja inicializado no boot da aplicação
-void firebaseApp
-// IMPORT ORDER IS NOT ENOUGH: Tailwind v4 puts utilities in @layer utilities, and
-// UNLAYERED css beats any layer in the cascade — no import order fixes that. The real
-// fix is $enable-cssgrid: false in styles/bootstrap-theme.scss, which removes
-// Bootstrap's unlayered .grid (12 columns) that was squeezing every card to ~90px.
-// These imports still control which non-conflicting base styles apply.
-import './styles/bootstrap-theme.scss'
-import './index.css'
+import { recoverFromStaleChunks } from './lib/chunk-recovery'
 
 const root = document.getElementById('root')
 
@@ -33,11 +28,13 @@ if (!root) {
 // descarta). Com domínio próprio configurado, manda o visitante para lá antes de
 // montar o app. Sem VITE_CANONICAL_ORIGIN é no-op.
 if (!redirectToCanonicalOrigin()) {
+  recoverFromStaleChunks()
   createRoot(root).render(
     <StrictMode>
-      <SectionErrorBoundary scope="app">
+      <AppErrorBoundary>
         <App />
-      </SectionErrorBoundary>
+      </AppErrorBoundary>
     </StrictMode>,
   )
+  scheduleAnalytics()
 }

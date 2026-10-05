@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, CircleHelp, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
@@ -21,8 +21,7 @@ import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
-import { TeacherEnrollmentPanel } from './enrollment/TeacherEnrollmentPanel'
-import { TeacherActivitiesView } from '@/features/activities/teacher/TeacherActivitiesView'
+import { TeacherActivitiesView, TeacherEnrollmentPanel, prefetchTeacherView } from './sections'
 
 type View = 'dashboard' | 'turmas' | 'atividades' | 'convites' | 'alunos' | 'agenda'
 
@@ -141,6 +140,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         nav={nav}
         active={view}
         onNavigate={(id) => setView(id as View)}
+        onPrefetch={prefetchTeacherView}
         roleLabel="Professor"
         userName={name}
         subtitle={`Olá, ${firstName(name)} · suas turmas, aulas e alunos`}
@@ -175,6 +175,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         {/* Outside the boundary: if the section crashes the title stays. */}
         <PageHeading id="teacher-section-title" as="h1" icon={meta.icon} eyebrow={meta.eyebrow} title={meta.label} description={meta.description} />
         <SectionErrorBoundary key={view} label={meta.label}>
+        <Suspense fallback={<Skeleton className="h-96 rounded-2xl" />}>
         {view === 'dashboard' && <TeacherDashboard onOpenStudent={openStudentById} />}
 
         {view === 'turmas' && (
@@ -274,6 +275,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
         {view === 'agenda' && <AgendaView revision={revision} />}
+        </Suspense>
         </SectionErrorBoundary>
         </section>
       </AppShell>

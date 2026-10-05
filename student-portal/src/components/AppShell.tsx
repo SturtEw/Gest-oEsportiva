@@ -43,6 +43,8 @@ export interface AppShellProps {
   nav: NavItem[]
   active: string
   onNavigate: (id: string) => void
+  /** Called on menu hover/focus/press, before the click: lets a lazy view start downloading. */
+  onPrefetch?: (id: string) => void
   roleLabel: string
   userName: string
   /** Second line of the top header, under the current section label. Defaults to userName. */
@@ -79,6 +81,7 @@ export function AppShell({
   nav,
   active,
   onNavigate,
+  onPrefetch,
   roleLabel,
   userName,
   subtitle,
@@ -153,6 +156,7 @@ export function AppShell({
           key={item.id}
           type="button"
           onClick={() => handleNavClick(item.id)}
+          onPointerDown={() => onPrefetch?.(item.id)}
           aria-current={isActive ? 'page' : undefined}
           className={cn(
             'relative mx-0.5 my-1 flex min-w-0 flex-col items-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold transition-colors',
@@ -181,6 +185,8 @@ export function AppShell({
         key={item.id}
         type="button"
         onClick={() => handleNavClick(item.id)}
+        onPointerEnter={() => onPrefetch?.(item.id)}
+        onFocus={() => onPrefetch?.(item.id)}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
           'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',

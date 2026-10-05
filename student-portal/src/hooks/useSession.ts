@@ -4,9 +4,27 @@ import type { SessionUser } from '@/lib/types'
 
 export type SessionState = 'loading' | 'authenticated' | 'anonymous'
 
+const SESSION_HINT_KEY = 'ge:session-hint'
+
+/**
+ * Whether a session probably exists, before /api/auth/me answers. gesp_session is
+ * HttpOnly, so JS can only see it in tests; gesp_csrf is readable and lives as
+ * long as the session (same-site deploys). In production the cookies belong to
+ * the API host and are invisible here, hence the localStorage hint set on sign-in.
+ * A wrong guess only costs one "Verificando sua sessão…" before the login shows;
+ * without it, a signed-in visitor saw the login flash (and downloaded its chunk).
+ */
 function hasSessionCookie(): boolean {
   if (typeof document === 'undefined') return false
-  return document.cookie.split('; ').some((c) => c.startsWith('gesp_session='))
+  if (document.cookie.split('; ').some((c) => c.startsWith('gesp_session=') || c.startsWith('gesp_csrf='))) return true
+  try { return window.localStorage.getItem(SESSION_HINT_KEY) === '1' } catch { return false }
+}
+
+function rememberSession(active: boolean) {
+  try {
+    if (active) window.localStorage.setItem(SESSION_HINT_KEY, '1')
+    else window.localStorage.removeItem(SESSION_HINT_KEY)
+  } catch { /* storage blocked: the hint is an optimisation */ }
 }
 
 export function useSession() {
@@ -62,6 +80,10 @@ export function useSession() {
       if (abortRef.current) abortRef.current.abort()
     }
   }, [refreshSession])
+
+  useEffect(() => {
+    if (status !== 'loading') rememberSession(status === 'authenticated')
+  }, [status])
 
   const login = useCallback(async (loginValue: string, senha: string) => {
     setError(null)

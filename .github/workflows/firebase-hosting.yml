@@ -92,6 +92,9 @@ jobs:
           if [ -n "$VITE_CANONICAL_ORIGIN" ]; then
             grep -rqF -- "$VITE_CANONICAL_ORIGIN" dist/assets || { echo "VITE_CANONICAL_ORIGIN missing from the built bundle"; exit 1; }
           fi
+      # Budgets in scripts/bundle-size.mjs (docs/code-splitting-plan.md, step 7).
+      - name: Check bundle size budget
+        run: npm run size
       # Pull requests are validated but never published to the live site.
       - name: Check deployment credentials
         if: github.event_name == 'push'

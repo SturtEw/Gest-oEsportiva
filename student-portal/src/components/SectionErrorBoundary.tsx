@@ -7,8 +7,6 @@ interface Props {
   children: ReactNode
   /** Shown in the message, e.g. "Treinamentos e chaves". */
   label?: string
-  /** "app" wraps the whole portal: last line of defence against a blank page. */
-  scope?: 'section' | 'app'
 }
 
 interface State {
@@ -35,27 +33,19 @@ export class SectionErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children
-    if (this.props.scope === 'app') {
-      return (
-        <main className="flex min-h-screen items-center justify-center bg-background p-6">
-          <Alert variant="destructive" role="alert" className="max-w-md bg-card">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Algo deu errado ao exibir o portal.</AlertTitle>
-            <AlertDescription className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <span>Seus dados estão seguros. Recarregue a página para continuar.</span>
-              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Recarregar</Button>
-            </AlertDescription>
-          </Alert>
-        </main>
-      )
-    }
+    // The whole-app fallback is AppErrorBoundary (no UI-kit imports, initial bundle).
+    // A lazy section whose chunk failed to download stays failed (React.lazy caches
+    // the rejection), so retrying in place cannot work: offer a reload instead.
+    const chunkFailed = /dynamically imported module|Importing a module script failed|error loading dynamically|Failed to fetch/i.test(this.state.error.message)
     return (
       <Alert variant="destructive" role="alert">
         <AlertCircle aria-hidden="true" />
         <AlertTitle>Não foi possível exibir {this.props.label ? `“${this.props.label}”` : 'esta seção'}.</AlertTitle>
         <AlertDescription className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <span>As outras áreas do portal continuam disponíveis.</span>
-          <Button variant="outline" size="sm" onClick={this.reset}>Tentar novamente</Button>
+          <span>{chunkFailed ? 'Verifique a conexão e recarregue a página.' : 'As outras áreas do portal continuam disponíveis.'}</span>
+          {chunkFailed
+            ? <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Recarregar</Button>
+            : <Button variant="outline" size="sm" onClick={this.reset}>Tentar novamente</Button>}
         </AlertDescription>
       </Alert>
     )

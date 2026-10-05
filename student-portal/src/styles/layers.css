@@ -1,0 +1,11 @@
+/*
+ * Cascade layer order for the whole app. MUST be the first CSS the page loads
+ * (main.tsx imports it before anything else).
+ *
+ * Bootstrap is no longer in the initial bundle: it arrives with the lazy login /
+ * account-status screens (styles/bootstrap-theme.scss). A layer's position is
+ * fixed by the first time its name appears, so without this statement a late
+ * `@layer bootstrap` would be appended after `utilities` and override every
+ * Tailwind utility.
+ */
+@layer theme, base, bootstrap, components, utilities;

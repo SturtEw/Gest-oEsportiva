@@ -22,9 +22,27 @@ vi.mock('@/lib/api', () => ({
 
 import { api } from '@/lib/api'
 
+// Node 22+ exposes an experimental global localStorage that shadows jsdom's and
+// has no methods without --localstorage-file. An in-memory Storage keeps the
+// session-hint tests independent of the Node version.
+const memory = new Map<string, string>()
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: (key: string) => memory.get(key) ?? null,
+    setItem: (key: string, value: string) => { memory.set(key, String(value)) },
+    removeItem: (key: string) => { memory.delete(key) },
+    clear: () => memory.clear(),
+    key: (index: number) => [...memory.keys()][index] ?? null,
+    get length() { return memory.size },
+  } satisfies Storage,
+})
+
 describe('Hook Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // useSession keeps a "probably signed in" hint between page loads.
+    window.localStorage.clear()
   })
 
   afterEach(() => {
@@ -54,6 +72,19 @@ describe('Hook Tests', () => {
 
       expect(result.current.status).toBe('anonymous')
       expect(result.current.user).toBeNull()
+    })
+
+    it('starts as loading when a previous sign-in left the hint (HttpOnly cookie is invisible)', async () => {
+      Object.defineProperty(document, 'cookie', { writable: true, value: '' })
+      window.localStorage.setItem('ge:session-hint', '1')
+      vi.mocked(api.session).mockRejectedValueOnce(Object.assign(new Error('Sessão expirada'), { status: 401 }))
+
+      const { result } = renderHook(() => useSession())
+
+      expect(result.current.status).toBe('loading')
+      // The server says the session is gone: the hint is cleared for the next load.
+      await waitFor(() => expect(result.current.status).toBe('anonymous'))
+      expect(window.localStorage.getItem('ge:session-hint')).toBeNull()
     })
 
     it('should update status to authenticated on successful login', async () => {
