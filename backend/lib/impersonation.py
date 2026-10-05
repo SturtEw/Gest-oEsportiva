@@ -14,15 +14,17 @@ def allowed_view_path(path: str, role: str) -> bool:
     parts = path.split("/")
     if role == "aluno" and (
         path in {"/api/student/portal", "/api/enrollment/classes", "/api/enrollment/requests/me"} or
-        (len(parts) == 5 and parts[1:3] == ["api", "student"] and parts[4] in {"ranking", "questions", "schedule"} and bool(parts[3]))
+        (len(parts) == 5 and parts[1:3] == ["api", "student"] and parts[4] in {"ranking", "questions", "schedule"} and bool(parts[3])) or
+        (len(parts) == 5 and parts[1:4] == ["api", "atividades", "aluno"] and bool(parts[4]))
     ):
         return True
     if role == "professor" and (
         path in {
             "/api/professor/dashboard", "/api/professor/students", "/api/professor/agenda", "/api/professor/visao-geral",
-            "/api/enrollment/teacher/invites", "/api/enrollment/teacher/requests",
+            "/api/enrollment/teacher/invites", "/api/enrollment/teacher/requests", "/api/atividades/professor",
         } or
-        (len(parts) == 6 and parts[1:4] == ["api", "professor", "students"] and parts[5] == "questions" and bool(parts[4]))
+        (len(parts) == 6 and parts[1:4] == ["api", "professor", "students"] and parts[5] == "questions" and bool(parts[4])) or
+        (len(parts) == 5 and parts[1:4] == ["api", "atividades", "professor"] and bool(parts[4]))
     ):
         return True
     return role in {"aluno", "professor"} and (

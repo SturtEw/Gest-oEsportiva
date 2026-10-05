@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'professor' | 'responsavel' | 'aluno'
 export type AccountStatus = 'ativo' | 'pendente' | 'reprovado' | 'inativo'
 export type AttendanceStatus = 'presente' | 'ausente' | 'justificada'
 export type JustificationStatus = 'pendente' | 'aprovada' | 'rejeitada'
-export type PortalSection = 'inicio' | 'turma' | 'presencas' | 'avaliacoes' | 'conquistas' | 'treinamentos' | 'registros' | 'comunicados' | 'duvidas'
+export type PortalSection = 'inicio' | 'turma' | 'presencas' | 'avaliacoes' | 'conquistas' | 'atividades' | 'treinamentos' | 'registros' | 'comunicados' | 'duvidas'
 export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'offline' | 'single_worker'
 export type MessageAuthorRole = 'aluno' | 'responsavel' | 'professor'
 export type DeliveryStatus = 'sending' | 'sent' | 'failed'
@@ -165,6 +165,89 @@ export interface TeacherOverview {
   alunos: TeacherStudentRow[]
   semana: Array<{ rotulo: string; aulas: number }>
   hoje: string
+}
+
+// ---------- Atividades da turma e chaveamento de competições ----------
+export type BracketFormat = 'mata_mata' | 'pontos_corridos'
+/** aguardando: a team is still unknown · bye: advanced without playing. */
+export type BracketMatchStatus = 'aguardando' | 'pendente' | 'finalizada' | 'bye'
+export type ParticipantOrigin = 'interesse' | 'professor'
+export interface PersonRef { id: string; nome: string }
+export interface BracketTeam {
+  id: string
+  nome: string
+  total_membros: number
+  /** The signed-in student plays for this team. */
+  meu_time: boolean
+  /** Teachers get every team's members; a student only their own team's. */
+  membros?: PersonRef[]
+}
+export interface BracketMatch {
+  id: string
+  rodada: number
+  posicao: number
+  time_a_id: string | null
+  time_b_id: string | null
+  placar_a: number | null
+  placar_b: number | null
+  vencedor_id: string | null
+  status: BracketMatchStatus
+}
+export interface StandingRow {
+  posicao: number
+  time_id: string
+  nome: string
+  jogos: number
+  vitorias: number
+  empates: number
+  derrotas: number
+  pontos_pro: number
+  pontos_contra: number
+  saldo: number
+  pontos: number
+}
+export interface ActivityBracket {
+  formato: BracketFormat
+  versao: number
+  times: BracketTeam[]
+  partidas: BracketMatch[]
+  classificacao: StandingRow[]
+  campeao_id: string | null
+  total_rodadas: number
+}
+export interface ActivitySummary {
+  id: string
+  turma_id: string
+  turma_nome: string | null
+  modalidade: string | null
+  titulo: string
+  descricao: string | null
+  /** Calendar date YYYY-MM-DD and wall-clock HH:MM, not instants. */
+  data: string | null
+  horario: string | null
+  local: string | null
+  vagas: number | null
+  vagas_restantes: number | null
+  inscricoes_abertas: boolean
+  total_participantes: number
+  tem_chaveamento: boolean
+  formato: BracketFormat | null
+  criado_em: string
+  atualizado_em: string
+}
+export interface ActivityParticipant extends PersonRef { origem: ParticipantOrigin }
+export interface TeacherActivityDetail extends ActivitySummary {
+  participantes: ActivityParticipant[]
+  alunos_turma: PersonRef[]
+  chaveamento: ActivityBracket | null
+}
+export interface TeacherActivityClass { id: string; nome: string | null; modalidade: string | null }
+export interface TeacherActivities { turmas: TeacherActivityClass[]; atividades: ActivitySummary[] }
+export interface StudentActivity extends Omit<ActivitySummary, 'turma_nome' | 'modalidade'> {
+  inscrito: boolean
+  origem: ParticipantOrigin | null
+  pode_sair: boolean
+  chaveamento: ActivityBracket | null
 }
 
 export type TrainingPhase = 'classificatoria' | 'oitavas' | 'quartas' | 'semifinal' | 'final'

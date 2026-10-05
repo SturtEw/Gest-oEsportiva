@@ -35,6 +35,7 @@ from lib.security import decode_token, is_token_revoked
 from models.models import User
 from routers.admin import router as admin_router
 from routers.auth import _password_reset_email_html, children_router, router as auth_router
+from routers.class_activities import router as class_activities_router
 from routers.class_enrollment import router as class_enrollment_router
 from routers.professor import router as professor_router
 from routers.student import router as student_router
@@ -98,6 +99,9 @@ EMAIL_WORKER_SLEEP_SECS = 30
 EMAIL_WORKER_MAX_BACKOFF = 300
 
 
+EMAIL_WORKER_MAX_RETRIES = 5
+
+
 
 async def _render_template_email(template: str, data: dict) -> tuple[str, str]:
     """Render known templates into (subject, html). Always return safe outputs."""
@@ -146,18 +150,21 @@ async def _email_worker_once() -> int:
 
                 {"status": "pending"},
 
-                {"status": "failed", "next_retry_at": {"$exists": True, "$lte": now.isoformat()}},
+                # Capped: without the retry_count bound a permanently failing
+                # address was retried every 5 minutes forever.
+                {"status": "failed", "retry_count": {"$lt": EMAIL_WORKER_MAX_RETRIES}, "next_retry_at": {"$exists": True, "$lte": now.isoformat()}},
 
                 {"status": "failed", "retry_count": {"$exists": False}},
 
-                {"status": "failed", "retry_count": {"$lt": 5}, "updated_at": {"$exists": False}},
+                {"status": "failed", "retry_count": {"$lt": EMAIL_WORKER_MAX_RETRIES}, "updated_at": {"$exists": False}},
 
             ]
 
         },
 
-        {"_id": 0},
-
+        # No projection: `_id` is the only identifier every queue document has.
+        # Excluding it ({"_id": 0}) left documents without an `id` field
+        # unaddressable, so they were picked up and logged again every cycle.
     ).sort([("created_at", 1)]).limit(8)
 
     sent = 0
@@ -369,6 +376,9 @@ app.include_router(treinamentos_torneios_router)
 
 
 app.include_router(class_enrollment_router)
+
+
+app.include_router(class_activities_router)
 
 
 app.include_router(teacher_invites_admin_router)

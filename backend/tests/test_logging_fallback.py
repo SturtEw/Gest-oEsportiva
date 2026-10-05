@@ -82,6 +82,8 @@ def test_working_credentials_keep_cloud_logging(monkeypatch, fresh_db):
         )
 
     monkeypatch.setattr(gl, "Client", _fake_client)
+    # lib.db only tries Cloud Logging with ADC or on GCP (K_SERVICE = Cloud Run).
+    monkeypatch.setenv("K_SERVICE", "gestao-esportiva-api")
     module = fresh_db()
 
     assert module._HAS_CLOUD_LOGGING is True

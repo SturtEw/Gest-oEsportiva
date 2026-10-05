@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -22,8 +22,9 @@ import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherEnrollmentPanel } from './enrollment/TeacherEnrollmentPanel'
+import { TeacherActivitiesView } from '@/features/activities/teacher/TeacherActivitiesView'
 
-type View = 'dashboard' | 'turmas' | 'convites' | 'alunos' | 'agenda'
+type View = 'dashboard' | 'turmas' | 'atividades' | 'convites' | 'alunos' | 'agenda'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -33,6 +34,7 @@ interface ViewMeta { label: string; short: string; icon: LucideIcon; eyebrow: st
 const VIEWS: Record<View, ViewMeta> = {
   dashboard: { label: 'Painel', short: 'Painel', icon: LayoutDashboard, eyebrow: 'Visão geral', description: 'Aulas de hoje, a agenda à frente e como cada turma e aluno está indo.' },
   turmas: { label: 'Turmas', short: 'Turmas', icon: Users, eyebrow: 'Suas turmas', description: 'Os alunos de cada turma. Abra as dúvidas de um aluno ou registre uma conquista.' },
+  atividades: { label: 'Atividades', short: 'Atividades', icon: Flag, eyebrow: 'Torneios e eventos', description: 'Crie quantas atividades quiser para suas turmas. Os alunos marcam interesse; você monta os times, o chaveamento e registra os placares.' },
   convites: { label: 'Convites e pedidos', short: 'Convites', icon: UserPlus, eyebrow: 'Matrículas', description: 'Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.' },
   alunos: { label: 'Alunos', short: 'Alunos', icon: Trophy, eyebrow: 'Seus alunos', description: 'Todos os alunos das suas turmas em um só lugar.' },
   agenda: { label: 'Agenda', short: 'Agenda', icon: CalendarDays, eyebrow: 'Próximos 14 dias', description: 'As aulas marcadas para as próximas duas semanas. Para agendar uma aula, use o Painel.' },
@@ -99,6 +101,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
     return [
       item('dashboard'),
       item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
+      item('atividades'),
       item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
       item('alunos'),
       item('agenda'),
@@ -265,6 +268,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
             </div>
           )
         )}
+
+        {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 

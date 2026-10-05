@@ -1,6 +1,6 @@
 import { ArrowRight, Award, BookOpenCheck, CalendarCheck2, ChevronRight, MessageCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { RecentRecordsFeed } from '@/features/home/RecentRecordsFeed'
 import type { PortalSection, StudentPortalSnapshot } from '@/lib/types'
@@ -41,9 +41,12 @@ export function HomeDashboard({ snapshot, onOpenSection }: { snapshot: StudentPo
         </article>
 
         <Card className="border-0 shadow-none ring-1 ring-border">
-          <CardHeader className="flex-row items-center justify-between gap-3 border-b border-border/70 p-5">
-            <div><CardTitle className="font-display text-lg font-bold">O que mudou</CardTitle><CardDescription className="mt-1">Atualizações reais da escola</CardDescription></div>
-            <Button type="button" variant="ghost" size="icon" aria-label="Ver comunicados" onClick={() => onOpenSection('comunicados')}><ChevronRight aria-hidden="true" /></Button>
+          {/* CardHeader is a grid: the button needs CardAction to sit beside the
+              title (flex-row had no effect and dropped it under the description). */}
+          <CardHeader className="border-b border-border/70 p-5">
+            <CardTitle className="font-display text-lg font-bold">O que mudou</CardTitle>
+            <CardDescription className="mt-1">Atualizações reais da escola</CardDescription>
+            <CardAction><Button type="button" variant="ghost" size="icon" aria-label="Ver comunicados" onClick={() => onOpenSection('comunicados')}><ChevronRight aria-hidden="true" /></Button></CardAction>
           </CardHeader>
           <CardContent className="px-5">
             <RecentRecordsFeed snapshot={snapshot} onOpenSection={onOpenSection} />

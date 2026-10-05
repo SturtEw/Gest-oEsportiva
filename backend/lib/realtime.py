@@ -184,6 +184,11 @@ class RealtimeHub:
             await self._invalidate(f"user:{user_id}", section)
 
 
+    async def publish_class(self, turma_id: str, section: str) -> None:
+        if not self.change_stream_available:
+            await self._publish_class(turma_id, section)
+
+
     async def _publish_class(self, turma_id: str, section: str) -> None:
         if not turma_id:
             return
@@ -267,6 +272,13 @@ class RealtimeHub:
 
         elif collection == "turma_convites" and document.get("professor_id"):
             await self._invalidate(f"user:{document['professor_id']}", "enrollment")
+
+        elif collection == "atividades":
+            # Class activities: the class students' list and the teacher's panel.
+            await self._publish_class(document.get("turma_id", ""), "activities")
+
+            if document.get("professor_id"):
+                await self._invalidate(f"user:{document['professor_id']}", "activities")
 
 
     async def _watch_database(self) -> None:
@@ -354,6 +366,11 @@ async def publish_admin_event(section: str) -> None:
 
 async def publish_user_event(user_id: str, section: str) -> None:
     await hub.publish_user(user_id, section)
+
+
+async def publish_class_event(turma_id: str, section: str) -> None:
+    """Invalidate `section` for every student of the class."""
+    await hub.publish_class(turma_id, section)
 
 
 def allowed_websocket_origin(origin: str | None) -> bool:

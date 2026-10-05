@@ -731,6 +731,15 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    "atividades": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        # Class listing (teacher panel and the students of the class), newest first.
+        IndexModel([("turma_id", ASCENDING), ("criado_em", DESCENDING)], name="turma_criado"),
+
+    ],
+
     "comunicados": [
 
         IndexModel([("id", ASCENDING)], name="id", unique=True),

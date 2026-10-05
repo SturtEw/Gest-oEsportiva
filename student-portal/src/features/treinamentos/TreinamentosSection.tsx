@@ -152,7 +152,10 @@ export function TreinamentosSection() {
 
   const selectedTournament = useMemo(() => tournaments.find((t) => t.id === selectedTournamentId), [tournaments, selectedTournamentId])
   const categories = useMemo(() => selectedTournament?.categorias.map((c) => c.categoria) ?? [], [selectedTournament])
-  const selectedBracket = useMemo(() => selectedTournament?.categorias.find((c) => c.categoria === selectedCategory), [selectedTournament, selectedCategory])
+  // The tabs open on the first category, so the bracket must too: looking up only
+  // the clicked category left the first tab empty until the student clicked it.
+  const activeCategory = selectedCategory && categories.includes(selectedCategory) ? selectedCategory : categories[0]
+  const selectedBracket = useMemo(() => selectedTournament?.categorias.find((c) => c.categoria === activeCategory), [selectedTournament, activeCategory])
 
   if (loading) {
     return (
@@ -198,18 +201,22 @@ export function TreinamentosSection() {
           <h2 className="font-display text-xl font-bold">{selectedTournament.nome} · {selectedTournament.ano}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{selectedTournament.modalidade} · Atualizado em {formatDate(selectedTournament.atualizado_em)}</p>
         </div>
-        <Select value={selectedTournamentId} onValueChange={(value) => { if (value) setSelectedTournamentId(value); setSelectedCategory(undefined) }}>
+        <Select
+          items={tournaments.map((t) => ({ value: t.id, label: `${t.nome} · ${t.ano}` }))}
+          value={selectedTournamentId}
+          onValueChange={(value) => { if (value) setSelectedTournamentId(value); setSelectedCategory(undefined) }}
+        >
           <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Escolher torneio" /></SelectTrigger>
           <SelectContent>{tournaments.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome} · {t.ano}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
       {categories.length > 0 && (
-        <Tabs value={selectedCategory ?? categories[0]} onValueChange={handleCategoryChange} className="w-full">
+        <Tabs value={activeCategory} onValueChange={handleCategoryChange} className="w-full">
           <TabsList className="w-full overflow-x-auto flex-nowrap pb-1" role="tablist" aria-label="Categorias do torneio">
             {categories.map((cat) => (
-              <TabsTrigger key={cat} value={cat} className="whitespace-nowrap min-h-10 px-3 py-2" role="tab" aria-selected={selectedCategory === cat}>
-                {CATEGORY_LABELS[cat]}
+              <TabsTrigger key={cat} value={cat} className="whitespace-nowrap min-h-10 px-3 py-2">
+                {CATEGORY_LABELS[cat] ?? cat}
               </TabsTrigger>
             ))}
           </TabsList>

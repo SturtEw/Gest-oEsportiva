@@ -36,7 +36,9 @@ class TrainingTeamBase(BaseModel):
 
 
 class TrainingTeamCreate(TrainingTeamBase):
-    pass
+    # Kept when present: matches reference teams by id, so regenerating the ids on
+    # every PATCH left each match pointing at teams that no longer existed.
+    id: str | None = Field(default=None, max_length=64)
 
 
 
@@ -95,7 +97,7 @@ class TrainingMatchBase(BaseModel):
 
 
 class TrainingMatchCreate(TrainingMatchBase):
-    pass
+    id: str | None = Field(default=None, max_length=64)
 
 
 
@@ -122,8 +124,19 @@ class TrainingBracketCreate(TrainingBracketBase):
 
 
 
-class TrainingBracketResponse(TrainingBracketBase):
-    pass
+class TrainingBracketResponse(BaseModel):
+    # Its own lists of *response* models (with id). Inheriting the Create lists made
+    # pydantic reject the response objects: creating or editing any tournament that
+    # had teams or matches failed with a 500.
+    categoria: str
+
+    fase: str
+
+    nome: str
+
+    partidas: list[TrainingMatchResponse] = []
+
+    equipes: list[TrainingTeamResponse] = []
 
 
 
@@ -143,8 +156,16 @@ class TrainingTournamentCreate(TrainingTournamentBase):
 
 
 
-class TrainingTournamentResponse(TrainingTournamentBase):
+class TrainingTournamentResponse(BaseModel):
     id: str
+
+    nome: str = Field(min_length=3, max_length=120)
+
+    ano: int = Field(ge=2020, le=2100)
+
+    modalidade: str = Field(min_length=2, max_length=40)
+
+    categorias: list[TrainingBracketResponse] = []
 
     atualizado_em: str
 
@@ -155,6 +176,24 @@ async def _verify_admin_or_professor(user: User) -> None:
     if user.tipo not in ("admin", "professor"):
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores e professores")
 
+
+
+def _teams(items: list[TrainingTeamCreate]) -> list[TrainingTeamResponse]:
+    return [TrainingTeamResponse(id=item.id or str(uuid.uuid4()), **item.model_dump(exclude={"id"})) for item in items]
+
+
+def _matches(items: list[TrainingMatchCreate]) -> list[TrainingMatchResponse]:
+    return [TrainingMatchResponse(id=item.id or str(uuid.uuid4()), **item.model_dump(exclude={"id"})) for item in items]
+
+
+def _bracket(cat: TrainingBracketCreate, categoria: str | None = None, fase: str | None = None) -> TrainingBracketResponse:
+    return TrainingBracketResponse(
+        categoria=categoria or cat.categoria,
+        fase=fase or cat.fase,
+        nome=cat.nome,
+        partidas=_matches(cat.partidas),
+        equipes=_teams(cat.equipes),
+    )
 
 
 def _phase_order_key(fase: str) -> int:
@@ -186,39 +225,7 @@ async def criar_torneio(payload: TrainingTournamentCreate, user: User = Depends(
 
     now = now_utc()
 
-    # Generate IDs for nested objects
-    categorias = []
-
-    for cat in payload.categorias:
-        cat_id = str(uuid.uuid4())
-
-        equipes = []
-
-        for eq in cat.equipes:
-            eq_id = str(uuid.uuid4())
-
-            equipes.append(TrainingTeamResponse(id=eq_id, **eq.model_dump()))
-
-        partidas = []
-
-        for part in cat.partidas:
-            part_id = str(uuid.uuid4())
-
-            partidas.append(TrainingMatchResponse(id=part_id, **part.model_dump()))
-
-        categorias.append(TrainingBracketResponse(
-
-            categoria=cat.categoria,
-
-            fase=cat.fase,
-
-            nome=cat.nome,
-
-            partidas=partidas,
-
-            equipes=equipes,
-
-        ))
+    categorias = [_bracket(cat) for cat in payload.categorias]
 
     torneio = TrainingTournamentResponse(
 
@@ -267,36 +274,7 @@ async def atualizar_torneio(torneio_id: str, payload: TrainingTournamentCreate, 
 
     now = now_utc()
 
-    categorias = []
-
-    for cat in payload.categorias:
-        equipes = []
-
-        for eq in cat.equipes:
-            eq_id = str(uuid.uuid4())
-
-            equipes.append(TrainingTeamResponse(id=eq_id, **eq.model_dump()))
-
-        partidas = []
-
-        for part in cat.partidas:
-            part_id = str(uuid.uuid4())
-
-            partidas.append(TrainingMatchResponse(id=part_id, **part.model_dump()))
-
-        categorias.append(TrainingBracketResponse(
-
-            categoria=cat.categoria,
-
-            fase=cat.fase,
-
-            nome=cat.nome,
-
-            partidas=partidas,
-
-            equipes=equipes,
-
-        ))
+    categorias = [_bracket(cat) for cat in payload.categorias]
 
     atualizado = TrainingTournamentResponse(
 
@@ -346,33 +324,7 @@ async def adicionar_categoria(torneio_id: str, payload: TrainingBracketCreate, u
     if not torneio:
         raise HTTPException(status_code=404, detail="Torneio não encontrado")
 
-    equipes = []
-
-    for eq in payload.equipes:
-        eq_id = str(uuid.uuid4())
-
-        equipes.append(TrainingTeamResponse(id=eq_id, **eq.model_dump()))
-
-    partidas = []
-
-    for part in payload.partidas:
-        part_id = str(uuid.uuid4())
-
-        partidas.append(TrainingMatchResponse(id=part_id, **part.model_dump()))
-
-    nova_categoria = TrainingBracketResponse(
-
-        categoria=payload.categoria,
-
-        fase=payload.fase,
-
-        nome=payload.nome,
-
-        partidas=partidas,
-
-        equipes=equipes,
-
-    )
+    nova_categoria = _bracket(payload)
 
     await db.torneios.update_one(
 
@@ -402,33 +354,7 @@ async def atualizar_bracket(torneio_id: str, categoria: str, fase: str, payload:
     if cat_index is None:
         raise HTTPException(status_code=404, detail="Categoria/fase não encontrada")
 
-    equipes = []
-
-    for eq in payload.equipes:
-        eq_id = str(uuid.uuid4())
-
-        equipes.append(TrainingTeamResponse(id=eq_id, **eq.model_dump()))
-
-    partidas = []
-
-    for part in payload.partidas:
-        part_id = str(uuid.uuid4())
-
-        partidas.append(TrainingMatchResponse(id=part_id, **part.model_dump()))
-
-    updated = TrainingBracketResponse(
-
-        categoria=categoria,
-
-        fase=fase,
-
-        nome=payload.nome,
-
-        partidas=partidas,
-
-        equipes=equipes,
-
-    )
+    updated = _bracket(payload, categoria=categoria, fase=fase)
 
     await db.torneios.update_one(
 
@@ -458,9 +384,7 @@ async def adicionar_partida(torneio_id: str, categoria: str, fase: str, payload:
     if cat_index is None:
         raise HTTPException(status_code=404, detail="Categoria/fase não encontrada")
 
-    part_id = str(uuid.uuid4())
-
-    partida = TrainingMatchResponse(id=part_id, **payload.model_dump())
+    partida = _matches([payload])[0]
 
     await db.torneios.update_one(
 
@@ -525,9 +449,7 @@ async def adicionar_equipe(torneio_id: str, categoria: str, fase: str, payload: 
     if cat_index is None:
         raise HTTPException(status_code=404, detail="Categoria/fase não encontrada")
 
-    eq_id = str(uuid.uuid4())
-
-    equipe = TrainingTeamResponse(id=eq_id, **payload.model_dump())
+    equipe = _teams([payload])[0]
 
     await db.torneios.update_one(
 

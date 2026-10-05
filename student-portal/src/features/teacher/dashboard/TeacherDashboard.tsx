@@ -342,7 +342,12 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
           <form id="teacher-create-class" onSubmit={(event) => void submitCreate(event)} className="space-y-4">
             <Field>
               <FieldLabel htmlFor="class-turma">Turma</FieldLabel>
-              <Select value={draft.turma_id} onValueChange={(value) => setDraft((current) => ({ ...current, turma_id: value ?? '' }))}>
+              {/* items: without it Select.Value renders the raw value — the class UUID. */}
+              <Select
+                items={(overview?.turmas ?? []).map((turma) => ({ value: turma.id, label: turma.nome }))}
+                value={draft.turma_id}
+                onValueChange={(value) => setDraft((current) => ({ ...current, turma_id: value ?? '' }))}
+              >
                 <SelectTrigger id="class-turma" className="mt-2 h-11 w-full rounded-xl">
                   <SelectValue placeholder="Selecione a turma" />
                 </SelectTrigger>

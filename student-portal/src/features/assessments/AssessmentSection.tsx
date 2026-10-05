@@ -33,7 +33,7 @@ export function AssessmentSection({ assessments }: { assessments: StudentAssessm
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Acompanhe cada critério e leia os comentários do professor. Sua avaliação é sobre o seu percurso.</p>
         </div>
         {periods.length > 0 && (
-          <Select value={active?.bimestre} onValueChange={(value) => setSelectedId(typeof value === 'string' ? value : null)}>
+          <Select items={periods.map((period) => ({ value: period.bimestre, label: formatBimester(period.bimestre) }))} value={active?.bimestre} onValueChange={(value) => setSelectedId(typeof value === 'string' ? value : null)}>
             <SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-64" aria-label="Selecionar bimestre">
               <SelectValue placeholder="Escolha um bimestre" />
             </SelectTrigger>
