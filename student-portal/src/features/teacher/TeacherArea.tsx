@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X } from 'lucide-react'
+import { CalendarDays, CircleHelp, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
+import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,11 +20,23 @@ import type { PublicMessage, TeacherClass } from '@/lib/types'
 import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherEnrollmentPanel } from './enrollment/TeacherEnrollmentPanel'
 
 type View = 'dashboard' | 'turmas' | 'convites' | 'alunos' | 'agenda'
 
 interface Student { id: string; nome: string; turma_id: string }
+
+interface ViewMeta { label: string; short: string; icon: LucideIcon; eyebrow: string; description: string }
+
+/** Navigation label + page title block of each teacher section (mirrors the student area). */
+const VIEWS: Record<View, ViewMeta> = {
+  dashboard: { label: 'Painel', short: 'Painel', icon: LayoutDashboard, eyebrow: 'Visão geral', description: 'Aulas de hoje, a agenda à frente e como cada turma e aluno está indo.' },
+  turmas: { label: 'Turmas', short: 'Turmas', icon: Users, eyebrow: 'Suas turmas', description: 'Os alunos de cada turma. Abra as dúvidas de um aluno ou registre uma conquista.' },
+  convites: { label: 'Convites e pedidos', short: 'Convites', icon: UserPlus, eyebrow: 'Matrículas', description: 'Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.' },
+  alunos: { label: 'Alunos', short: 'Alunos', icon: Trophy, eyebrow: 'Seus alunos', description: 'Todos os alunos das suas turmas em um só lugar.' },
+  agenda: { label: 'Agenda', short: 'Agenda', icon: CalendarDays, eyebrow: 'Próximos 14 dias', description: 'As aulas marcadas para as próximas duas semanas. Para agendar uma aula, use o Painel.' },
+}
 
 export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => void }) {
   const [view, setView] = useState<View>('dashboard')
@@ -81,13 +94,17 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
     if (found) setActiveStudent(found)
   }
 
-  const nav: NavItem[] = useMemo(() => [
-    { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
-    { id: 'turmas', label: 'Turmas', icon: Users, badge: classes.length || undefined },
-    { id: 'convites', label: 'Convites e pedidos', icon: UserPlus, badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' },
-    { id: 'alunos', label: 'Alunos', icon: Trophy },
-    { id: 'agenda', label: 'Agenda', icon: CalendarDays },
-  ], [classes.length, enrollment.pendingCount])
+  const nav: NavItem[] = useMemo(() => {
+    const item = (id: View, extra?: Partial<NavItem>): NavItem => ({ id, label: VIEWS[id].label, short: VIEWS[id].short, icon: VIEWS[id].icon, ...extra })
+    return [
+      item('dashboard'),
+      item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
+      item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
+      item('alunos'),
+      item('agenda'),
+    ]
+  }, [classes.length, enrollment.pendingCount])
+  const meta = VIEWS[view]
 
   const sendReply = async (event: FormEvent) => {
     event.preventDefault()
@@ -123,6 +140,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         onNavigate={(id) => setView(id as View)}
         roleLabel="Professor"
         userName={name}
+        subtitle={`Olá, ${firstName(name)} · suas turmas, aulas e alunos`}
         monogram={initials(name)}
         onLogout={onLogout}
         connection={connection}
@@ -150,6 +168,10 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
           </Alert>
         )}
 
+        <section aria-labelledby="teacher-section-title" className="space-y-5">
+        {/* Outside the boundary: if the section crashes the title stays. */}
+        <PageHeading id="teacher-section-title" as="h1" icon={meta.icon} eyebrow={meta.eyebrow} title={meta.label} description={meta.description} />
+        <SectionErrorBoundary key={view} label={meta.label}>
         {view === 'dashboard' && <TeacherDashboard onOpenStudent={openStudentById} />}
 
         {view === 'turmas' && (
@@ -247,6 +269,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
         {view === 'agenda' && <AgendaView revision={revision} />}
+        </SectionErrorBoundary>
+        </section>
       </AppShell>
 
       <Dialog open={Boolean(activeStudent)} onOpenChange={(open) => { if (!open) { setActiveStudent(null); setMessages([]); setDraft('') } }}>

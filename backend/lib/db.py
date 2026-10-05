@@ -694,6 +694,19 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    "professor_convites": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        # The link carries the token; only its SHA-256 is stored and looked up.
+        IndexModel([("token_hash", ASCENDING)], name="token_hash", unique=True),
+
+        IndexModel([("email", ASCENDING), ("criado_em", DESCENDING)], name="email_criado"),
+
+        IndexModel([("criado_em", DESCENDING)], name="criado_em"),
+
+    ],
+
     "solicitacoes_turma": [
 
         IndexModel([("id", ASCENDING)], name="id", unique=True),

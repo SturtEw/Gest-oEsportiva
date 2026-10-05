@@ -1,7 +1,7 @@
 /** Authentication, session and account endpoints. */
 
 import { request, setCsrfToken } from './client'
-import type { JoinedClass, SessionUser } from '@/lib/types'
+import type { InviteClassBrief, JoinedClass, SessionUser, TeacherInvitePreview } from '@/lib/types'
 
 export type AccountStatusResponse = 'ativo' | 'pendente' | 'reprovado' | 'inativo'
 
@@ -56,6 +56,27 @@ export interface RegisterResponse {
   aviso_convite?: string | null
 }
 
+/** Signup through the root admin's invite link. The e-mail comes from the invite. */
+export interface TeacherRegisterInput {
+  token: string
+  provider: 'email' | 'google'
+  credential?: string
+  nome: string
+  senha?: string
+  documento_tipo: 'cpf' | 'rg' | 'outro'
+  documento_numero: string
+  formacao_academica: string
+  area_atuacao: string
+}
+
+export interface TeacherRegisterResponse {
+  user: SessionUser
+  /** Class handed over by the invite, when it was still free. */
+  turma: InviteClassBrief | null
+  /** Set when the account exists but the invited class could not be assigned. */
+  aviso: string | null
+}
+
 export const authApi = {
   session: (options?: { signal?: AbortSignal }) => request<{ user: SessionUser }>('/api/auth/me', options),
   // Devolve também o token CSRF: em deploys cross-origin o JS não lê o cookie
@@ -71,5 +92,7 @@ export const authApi = {
   resetPassword: (token: string, new_password: string) => request<{ message: string }>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
   changePassword: (current_password: string, new_password: string) => request<{ message: string }>('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password, new_password }) }),
   register: (payload: RegisterInput) => request<RegisterResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  teacherInvitePreview: (token: string) => request<TeacherInvitePreview>(`/api/auth/teacher-invite?token=${encodeURIComponent(token)}`),
+  registerTeacher: (payload: TeacherRegisterInput) => request<TeacherRegisterResponse>('/api/auth/register-teacher', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
 }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { AchievementSection } from '@/features/achievements/AchievementSection'
 import { AnnouncementsSection } from '@/features/announcements/AnnouncementsSection'
 import { AssessmentSection } from '@/features/assessments/AssessmentSection'
@@ -116,7 +117,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
         <div className="page-container py-6 sm:py-8">{user.tipo === 'responsavel' && children.length > 1 && <div className="mb-5 flex items-start gap-2 rounded-xl border border-[#DDE8D4] bg-[#F6FAF2] px-4 py-3 text-xs leading-5 text-[#48614C]"><Users aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Você vê somente os registros do aluno selecionado. O responsável não pode alterar a participação no ranking.</div>}
           {connection.status === 'single_worker' && <Alert className="mb-5 border-[#E9E1CC] bg-[#FFFDF7]"><Activity aria-hidden="true" /><AlertTitle>Sincronização limitada a este servidor</AlertTitle><AlertDescription>{connection.message}</AlertDescription></Alert>}
           {connection.status === 'offline' && <Alert className="mb-5 border-[#F2D8C8] bg-[#FFF7F3]"><Activity aria-hidden="true" /><AlertTitle>Sem conexão ao vivo</AlertTitle><AlertDescription>Os dados carregados permanecem disponíveis; a conexão será restabelecida automaticamente.</AlertDescription></Alert>}
-          {portal.loading ? <div className="space-y-5"><Skeleton className="h-72 rounded-[1.65rem]" /><div className="grid gap-5 lg:grid-cols-2"><Skeleton className="h-44 rounded-2xl" /><Skeleton className="h-44 rounded-2xl" /></div></div> : portal.error ? <Alert variant="destructive"><AlertTitle>Não foi possível carregar seus dados.</AlertTitle><AlertDescription className="mt-2 flex items-center justify-between gap-3"><span>{portal.error}</span><Button variant="outline" size="sm" onClick={portal.refresh}>Tentar novamente</Button></AlertDescription></Alert> : renderSection()}
+          {portal.loading ? <div className="space-y-5"><Skeleton className="h-72 rounded-[1.65rem]" /><div className="grid gap-5 lg:grid-cols-2"><Skeleton className="h-44 rounded-2xl" /><Skeleton className="h-44 rounded-2xl" /></div></div> : portal.error ? <Alert variant="destructive"><AlertTitle>Não foi possível carregar seus dados.</AlertTitle><AlertDescription className="mt-2 flex items-center justify-between gap-3"><span>{portal.error}</span><Button variant="outline" size="sm" onClick={portal.refresh}>Tentar novamente</Button></AlertDescription></Alert> : <SectionErrorBoundary key={activeSection} label={currentSection.label}>{renderSection()}</SectionErrorBoundary>}
         </div>
         <footer className="page-container hidden items-center justify-between border-t border-border/70 py-5 text-[11px] text-muted-foreground md:flex"><span>Gestão Esportiva Escolar · Seu percurso, no seu ritmo.</span><span>Dados privados do aluno selecionado.</span></footer>
       </main>

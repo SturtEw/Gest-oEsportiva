@@ -88,10 +88,11 @@ class RegisterAccountInput(BaseModel):
 
     senha: str | None = Field(default=None, min_length=10, max_length=72)
 
-    # Cadastro público existe APENAS para aluno. Contas de professor são criadas
-    # por convite do administrador raiz (admin.py / users), nunca pelo formulário
-    # público — por isso "professor" não é um valor aceito aqui. Pedidos com esse
-    # valor recebem 422 na validação do schema, antes de tocar o banco.
+    # Cadastro público existe APENAS para aluno. Professores entram pelo link de
+    # convite gerado pelo administrador raiz (routers/teacher_invites.py,
+    # POST /api/auth/register-teacher), nunca por este formulário — por isso
+    # "professor" não é um valor aceito aqui. Pedidos com esse valor recebem 422
+    # na validação do schema, antes de tocar o banco.
     tipo: Literal["aluno"] = "aluno"
 
     data_nascimento: str | None = None

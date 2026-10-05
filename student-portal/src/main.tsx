@@ -9,6 +9,7 @@ import '@fontsource/manrope/800.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { SectionErrorBoundary } from './components/SectionErrorBoundary'
 import { redirectToCanonicalOrigin } from './lib/canonical-origin'
 import { app as firebaseApp } from './lib/firebase'
 
@@ -34,7 +35,9 @@ if (!root) {
 if (!redirectToCanonicalOrigin()) {
   createRoot(root).render(
     <StrictMode>
-      <App />
+      <SectionErrorBoundary scope="app">
+        <App />
+      </SectionErrorBoundary>
     </StrictMode>,
   )
 }

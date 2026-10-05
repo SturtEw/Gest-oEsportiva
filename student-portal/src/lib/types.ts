@@ -42,6 +42,30 @@ export interface AdminNotification { id: string; tipo: string; user_id: string; 
 export interface UnassignedStudent { id: string; nome: string; data_nascimento: string | null; turma_id: null }
 export interface AdminClass { id: string; nome: string; modalidade: string; ano: number; capacidade: number; alunos_count: number; professor_id?: string | null }
 export interface AdminTeacher { id: string; nome: string; email: string }
+
+// ---------- Convite de professor (link gerado pelo administrador raiz) ----------
+export type TeacherInviteStatus = 'pendente' | 'usado' | 'expirado' | 'revogado'
+export interface InviteClassBrief { id: string; nome: string; modalidade?: string | null; ano?: number | null }
+export interface TeacherInvite {
+  id: string
+  email: string
+  nome: string | null
+  turma: InviteClassBrief | null
+  status: TeacherInviteStatus
+  criado_em: string
+  expira_em: string | null
+  usado_em: string | null
+  email_enviado: boolean
+}
+export interface CreatedTeacherInvite {
+  invite: TeacherInvite
+  /** Shown once: the server keeps only its hash. */
+  token: string
+  path: string
+  url: string
+  email_enviado: boolean
+}
+export interface TeacherInvitePreview { email: string; nome: string | null; turma: InviteClassBrief | null; expira_em: string | null }
 export interface TeacherClass { id: string; nome: string; modalidade: string; ano: number; capacidade: number; total_alunos: number }
 export interface RealtimeEvent { type: 'invalidate'; section: string; updatedAt: string; mode?: ConnectionStatus }
 

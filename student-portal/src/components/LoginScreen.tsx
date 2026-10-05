@@ -37,7 +37,7 @@ interface FloatingLabelInputProps {
   invalid?: boolean
 }
 
-function FloatingLabelInput({
+export function FloatingLabelInput({
   label,
   type = 'text',
   value,
@@ -291,13 +291,13 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
           >
             <ShieldCheck aria-hidden="true" style={{ width: 28, height: 28 }} />
           </div>
-          <p className="mt-4 mb-0 text-ge-success fw-bold text-uppercase" style={{ fontSize: 11, letterSpacing: '0.14em' }}>
+          <p className="mt-6 mb-0 text-ge-success fw-bold text-uppercase" style={{ fontSize: 11, letterSpacing: '0.14em' }}>
             {isPending ? 'Cadastro em análise' : isRejected ? 'Atualização da conta' : 'Conta criada'}
           </p>
           <h1 className="type-title text-center mt-2 mb-0" style={{ fontSize: 30, fontWeight: 800, color: '#18372F' }}>
             {isPending ? 'Aguardando aprovação' : isRejected ? 'Cadastro não aprovado' : 'Conta criada'}
           </h1>
-          <p className="mt-3 text-center mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420 }}>
+          <p className="mt-4 text-center mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420 }}>
             {accountState.message ?? (
               isPending
                 ? `O cadastro de ${accountState.name} será analisado pela escola. Você receberá uma atualização quando houver uma decisão.`
@@ -306,14 +306,14 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
                   : 'Seu acesso está liberado.'
             )}
           </p>
-          <div className="mt-4 rounded-3 bg-ge-light p-3 text-center w-100">
+          <div className="mt-6 rounded-3 bg-ge-light p-4 text-center w-100">
             <p className="mb-1 text-ge-muted" style={{ fontSize: 12 }}>Conta</p>
             <p className="mb-0 fw-semibold">{accountState.email}</p>
           </div>
           {isActive && (
             <button
               type="button"
-              className="btn btn-ge-primary mt-4 d-flex align-items-center justify-content-center gap-2 w-100 fw-bold"
+              className="btn btn-ge-primary mt-6 d-flex align-items-center justify-content-center gap-2 w-100 fw-bold"
               style={{ height: 44 }}
               onClick={resetRegistration}
             >
@@ -338,8 +338,8 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
   // ======= Formulário principal ===========================================
   return (
     <AuthShell>
-      <div className="text-center mb-5">
-        <p className="mb-3 d-inline-flex align-items-center gap-2 text-ge-success fw-bold text-uppercase"
+      <div className="text-center mb-12">
+        <p className="mb-4 d-inline-flex align-items-center gap-2 text-ge-success fw-bold text-uppercase"
            style={{ fontSize: 11, letterSpacing: '0.14em' }}>
           <Sparkles aria-hidden="true" style={{ width: 16, height: 16 }} />
           Acesso seguro
@@ -347,17 +347,17 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
         <h1 className="type-title mb-0" style={{ fontSize: 34, fontWeight: 800, color: '#18372F' }}>
           Seu percurso começa aqui.
         </h1>
-        <p className="mx-auto mt-3 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 440 }}>
+        <p className="mx-auto mt-4 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 440 }}>
           Entre com seu e-mail e senha. Identificamos automaticamente se você é aluno ou professor.
         </p>
       </div>
 
-      <div className="rounded-3 border px-4 py-3" style={{ borderColor: '#E1E9DB', backgroundColor: '#F7FAF4', color: '#536A58', fontSize: 12, lineHeight: 1.6 }}>
+      <div className="rounded-3 border px-6 py-4" style={{ borderColor: '#E1E9DB', backgroundColor: '#F7FAF4', color: '#536A58', fontSize: 12, lineHeight: 1.6 }}>
         Professores recebem o acesso por convite da escola. Alunos podem criar a própria conta.
       </div>
 
       {(localError || error) && (
-        <div className="alert alert-danger mt-4 d-flex align-items-start gap-2 rounded-3" role="alert">
+        <div className="alert alert-danger mt-6 d-flex align-items-start gap-2 rounded-3" role="alert">
           <span className="mt-1 d-flex">
             <ShieldCheck aria-hidden="true" style={{ width: 18, height: 18 }} />
           </span>
@@ -366,7 +366,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
       )}
 
       {mode === 'login' ? (
-        <form className="mt-5 d-grid gap-3" onSubmit={(event) => void submitLogin(event)} noValidate>
+        <form className="mt-12 d-grid gap-4" onSubmit={(event) => void submitLogin(event)} noValidate>
           <FloatingLabelInput
             id="login-email"
             label="E-mail"
@@ -411,9 +411,9 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
         </form>
       ) : mode === 'forgot' ? (
         forgotSuccess ? (
-          <div className="mt-5 d-flex flex-column align-items-center">
+          <div className="mt-12 d-flex flex-column align-items-center">
             <div
-              className="d-flex align-items-center justify-content-center rounded-4 text-ge-success mb-4"
+              className="d-flex align-items-center justify-content-center rounded-4 text-ge-success mb-6"
               style={{ width: 56, height: 56, backgroundColor: '#EAF0E5' }}
             >
               <CheckCircle2 aria-hidden="true" style={{ width: 28, height: 28 }} />
@@ -421,11 +421,11 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
             <h2 className="type-title mb-0 text-center" style={{ fontSize: 22, fontWeight: 800, color: '#18372F' }}>
               Verifique sua caixa de entrada
             </h2>
-            <p className="mt-3 mb-0 text-center text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+            <p className="mt-4 mb-0 text-center text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
               Se houver uma conta associada a <span className="fw-semibold text-dark">{forgotEmail || 'este e-mail'}</span>,
               enviamos um link para redefinir a senha. O link expira em 60 minutos.
             </p>
-            <div className="mt-5 d-flex flex-column w-100 gap-2">
+            <div className="mt-12 d-flex flex-column w-100 gap-2">
               <button
                 type="button"
                 className="btn btn-ge-outline w-100 d-flex align-items-center justify-content-center gap-2 fw-medium"
@@ -438,7 +438,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
             </div>
           </div>
         ) : (
-          <form className="mt-5 d-grid gap-3" onSubmit={(event) => void submitForgotPassword(event)} noValidate>
+          <form className="mt-12 d-grid gap-4" onSubmit={(event) => void submitForgotPassword(event)} noValidate>
             <h2 className="mb-0" style={{ fontSize: 18, fontWeight: 700, color: '#18372F' }}>
               Recuperar acesso
             </h2>
@@ -477,7 +477,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
           </form>
         )
       ) : (
-        <form className="mt-5 d-grid gap-3" onSubmit={(event) => void submitRegistration(event)} noValidate>
+        <form className="mt-12 d-grid gap-4" onSubmit={(event) => void submitRegistration(event)} noValidate>
           {provider === 'google' && googleToken && (
             <div className="alert alert-success rounded-3 d-flex align-items-start gap-2" role="alert"
                  style={{ backgroundColor: '#F5FAF1', borderColor: '#D8E5CF', color: '#183C32' }}>
@@ -621,28 +621,28 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
       {mode !== 'forgot' && (
         <>
           {/* ---------- Divisor + Google ------------------------------------------ */}
-          <div className="mt-5">
+          <div className="mt-12">
             <p className="hr-or mb-0">ou continue com</p>
             {/* Google injects its own iframe here, so this node must stay empty of ours. */}
             <div
               ref={googleButtonRef}
-              className="mt-4 flex min-h-[48px] w-full items-center justify-center"
+              className="mt-6 flex min-h-[48px] w-full items-center justify-center"
               style={{ minHeight: 48 }}
             />
             {googleLoading && (
-              <p className="mt-3 mb-0 text-center text-ge-muted" style={{ fontSize: 13 }} role="status">
+              <p className="mt-4 mb-0 text-center text-ge-muted" style={{ fontSize: 13 }} role="status">
                 Validando sua conta Google…
               </p>
             )}
             {!googleClientId && googleConfigLoaded && (
-              <p className="mt-3 mb-0 text-center text-ge-muted" style={{ fontSize: 12 }}>
+              <p className="mt-4 mb-0 text-center text-ge-muted" style={{ fontSize: 12 }}>
                 Acesso Google disponível quando configurado pela escola.
               </p>
             )}
           </div>
 
           {/* ---------- Alternar login / cadastro ---------------------------------- */}
-          <div className="mt-5 pt-4 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          <div className="mt-12 pt-6 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
             {mode === 'login' ? (
               <p className="mb-0 text-ge-muted" style={{ fontSize: 14 }}>
                 Ainda não tem acesso?{' '}
@@ -671,7 +671,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
       )}
 
       {/* ---------- Aviso de segurança ---------------------------------------- */}
-      <p className="mt-5 mb-0 d-flex align-items-start gap-2 text-ge-muted" style={{ fontSize: 12, lineHeight: 1.6 }}>
+      <p className="mt-12 mb-0 d-flex align-items-start gap-2 text-ge-muted" style={{ fontSize: 12, lineHeight: 1.6 }}>
         <LockKeyhole aria-hidden="true" className="mt-1 flex-shrink-0 text-ge-success" style={{ width: 16, height: 16 }} />
         Sua senha e o número completo do documento nunca são exibidos a outras contas.
         Responsáveis usam um acesso provisionado pela escola.
@@ -684,7 +684,21 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
 //  Shell com hero lateral (layout duplo lg+) e painel do formulário
 // ==========================================================================
 
-function AuthShell({ children }: { children: ReactNode }) {
+export interface AuthHeroCopy {
+  badge: string
+  title: string
+  description: string
+  footer: string
+}
+
+const DEFAULT_HERO: AuthHeroCopy = {
+  badge: 'Seu espaço de aprendizado',
+  title: 'Cada treino conta uma história.',
+  description: 'Acompanhe seu desenvolvimento, veja os registros da escola e converse com seu professor.',
+  footer: 'Uma experiência segura para alunos e famílias.',
+}
+
+export function AuthShell({ children, hero = DEFAULT_HERO }: { children: ReactNode; hero?: AuthHeroCopy }) {
   return (
     <main className="auth-shell">
       <div className="auth-wrapper row g-0 m-0">
@@ -693,7 +707,7 @@ function AuthShell({ children }: { children: ReactNode }) {
             <img src={heroImage} alt="Ambiente esportivo escolar" aria-hidden="true" />
           </div>
           <div className="hero-content">
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-4">
               <span
                 className="d-flex align-items-center justify-content-center rounded-4 fw-extrabold"
                 style={{
@@ -717,17 +731,17 @@ function AuthShell({ children }: { children: ReactNode }) {
           <div className="hero-content">
             <span className="badge-ge badge-ge-hero d-inline-flex align-items-center gap-2">
               <Sparkles aria-hidden="true" style={{ width: 12, height: 12 }} />
-              Seu espaço de aprendizado
+              {hero.badge}
             </span>
-            <h2 className="type-title mt-4 mb-0 text-white" style={{ fontSize: 38, fontWeight: 800, lineHeight: 1.15, maxWidth: 420 }}>
-              Cada treino conta uma história.
+            <h2 className="type-title mt-6 mb-0 text-white" style={{ fontSize: 38, fontWeight: 800, lineHeight: 1.15, maxWidth: 420 }}>
+              {hero.title}
             </h2>
-            <p className="mt-4 mb-0 text-white" style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(255,255,255,0.72)', maxWidth: 360 }}>
-              Acompanhe seu desenvolvimento, veja os registros da escola e converse com seu professor.
+            <p className="mt-6 mb-0 text-white" style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(255,255,255,0.72)', maxWidth: 360 }}>
+              {hero.description}
             </p>
           </div>
           <div className="hero-footer">
-            Uma experiência segura para alunos e famílias.
+            {hero.footer}
           </div>
         </section>
         <section className="auth-main col-12 col-lg-7">

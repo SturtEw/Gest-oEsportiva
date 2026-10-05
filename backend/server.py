@@ -38,6 +38,7 @@ from routers.auth import _password_reset_email_html, children_router, router as 
 from routers.class_enrollment import router as class_enrollment_router
 from routers.professor import router as professor_router
 from routers.student import router as student_router
+from routers.teacher_invites import admin_router as teacher_invites_admin_router, public_router as teacher_invites_public_router
 from routers.teacher_portal import router as teacher_portal_router
 from routers.treinamentos_torneios import router as treinamentos_torneios_router
 from services.root_admin import ensure_root_admin
@@ -368,6 +369,12 @@ app.include_router(treinamentos_torneios_router)
 
 
 app.include_router(class_enrollment_router)
+
+
+app.include_router(teacher_invites_admin_router)
+
+
+app.include_router(teacher_invites_public_router)
 
 
 

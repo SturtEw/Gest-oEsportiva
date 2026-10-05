@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -105,7 +105,7 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
         display: k?.ocupacao_percentual === null || k?.ocupacao_percentual === undefined ? '—' : `${k.ocupacao_percentual}%`,
         icon: TrendingUp,
         tone: (k?.ocupacao_percentual ?? 0) >= 90 ? 'warning' : 'neutral',
-        hint: k?.alunos_sem_turma ? `${k.alunos_sem_turma} aluno(s) sem turma` : 'Vagas Filling',
+        hint: k?.alunos_sem_turma ? `${k.alunos_sem_turma} aluno(s) sem turma` : 'Das vagas preenchidas',
       },
     ]
   }, [overview])
@@ -185,17 +185,19 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
           long class names from forcing a column wider than its track. */}
       <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
         <Card className="min-w-0 ring-1 ring-border">
-          <CardHeader className="flex-row items-center justify-between gap-3">
-            <div>
-              <CardTitle className="font-display">Aulas de hoje</CardTitle>
-              <CardDescription className="mt-1">
-                {overview?.hoje ? formatRelativeDay(overview.hoje, overview.hoje) : 'Sem agenda'}
-              </CardDescription>
-            </div>
-            <Button onClick={openCreate} disabled={!overview?.turmas.length} className="shrink-0">
-              <CalendarPlus className="size-4" />
-              Agendar
-            </Button>
+          {/* CardHeader is a grid: CardAction puts the button beside the title
+              (flex-row had no effect, so it wrapped under the description). */}
+          <CardHeader>
+            <CardTitle className="font-display">Aulas de hoje</CardTitle>
+            <CardDescription className="mt-1">
+              {overview?.hoje ? formatRelativeDay(overview.hoje, overview.hoje) : 'Sem agenda'}
+            </CardDescription>
+            <CardAction>
+              <Button onClick={openCreate} disabled={!overview?.turmas.length}>
+                <CalendarPlus className="size-4" />
+                Agendar
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {overview && overview.aulas_hoje.length > 0
@@ -213,15 +215,15 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
         </Card>
 
         <Card className="min-w-0 ring-1 ring-border">
-          <CardHeader className="flex-row items-center justify-between gap-3">
-            <div>
-              <CardTitle className="font-display">Próximas aulas</CardTitle>
-              <CardDescription className="mt-1">Sua agenda à frente</CardDescription>
-            </div>
+          <CardHeader>
+            <CardTitle className="font-display">Próximas aulas</CardTitle>
+            <CardDescription className="mt-1">Sua agenda à frente</CardDescription>
             {overview && overview.proximas_aulas.length > 0 ? (
-              <Badge className="shrink-0 rounded-full bg-muted text-muted-foreground">
-                {overview.proximas_aulas.length}
-              </Badge>
+              <CardAction>
+                <Badge className="rounded-full bg-muted text-muted-foreground">
+                  {overview.proximas_aulas.length}
+                </Badge>
+              </CardAction>
             ) : null}
           </CardHeader>
           <CardContent>
@@ -293,7 +295,8 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
                         {[turma.modalidade, turma.ano].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-                    <Badge className="shrink-0 rounded-full bg-card ring-1 ring-border">
+                    {/* text-foreground: the default variant's white text was invisible on bg-card. */}
+                    <Badge className="shrink-0 rounded-full bg-card text-foreground ring-1 ring-border">
                       {turma.total_alunos}/{turma.capacidade || '—'}
                     </Badge>
                   </div>

@@ -5,7 +5,9 @@ import type {
   AdminClass,
   AdminNotification,
   AdminTeacher,
+  CreatedTeacherInvite,
   StudentPortalSnapshot,
+  TeacherInvite,
   TeacherApplication,
   UnassignedStudent,
 } from '@/lib/types'
@@ -25,4 +27,9 @@ export const adminApi = {
   createClass: (payload: { nome: string; modalidade: string; ano: number; capacidade: number; professor_id?: string }) => request('/api/admin/classes', { method: 'POST', body: JSON.stringify(payload) }),
   assignClass: (alunoId: string, turmaId: string) => request(`/api/admin/students/${encodeURIComponent(alunoId)}/class`, { method: 'PATCH', body: JSON.stringify({ turma_id: turmaId }) }),
   inspectStudent: (alunoId: string) => request<{ read_only: true; inspected_by: string; student_portal: StudentPortalSnapshot }>(`/api/admin/students/${encodeURIComponent(alunoId)}/portal`),
+  // Teacher invitation links (`enrollmentApi.teacherInvites` is the class-code list).
+  adminTeacherInvites: () => request<{ invites: TeacherInvite[] }>('/api/admin/teacher-invites'),
+  createTeacherInvite: (payload: { email: string; nome?: string; turma_id?: string; validade_dias: number; enviar_email: boolean }) =>
+    request<CreatedTeacherInvite>('/api/admin/teacher-invites', { method: 'POST', body: JSON.stringify(payload) }),
+  revokeTeacherInvite: (id: string) => request<{ id: string; status: 'revogado' }>(`/api/admin/teacher-invites/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 }

@@ -1,24 +1,19 @@
-import { CircleHelp, UserPlus } from 'lucide-react'
+import { CircleHelp } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { TeacherEnrollment } from '@/hooks/useTeacherEnrollment'
 import { InviteCodesCard } from './InviteCodesCard'
 import { JoinRequestsCard } from './JoinRequestsCard'
 
-/** Teacher view "Convites e pedidos": the request queue first (it needs action), then codes. */
+/**
+ * Teacher view "Convites e pedidos": the request queue first (it needs action), then codes.
+ * The page title comes from TeacherArea, like every other teacher section.
+ */
 export function TeacherEnrollmentPanel({ enrollment, readOnly }: { enrollment: TeacherEnrollment; readOnly?: boolean }) {
   const firstLoad = enrollment.loading && enrollment.inviteClasses.length === 0 && enrollment.pending.length === 0
 
   return (
-    <section className="space-y-5" aria-labelledby="teacher-enrollment-title">
-      <header>
-        <p className="eyebrow flex items-center gap-2"><UserPlus aria-hidden="true" className="size-4" />Matrículas</p>
-        <h2 id="teacher-enrollment-title" className="type-title mt-2 text-2xl font-extrabold text-heading sm:text-3xl">Convites e pedidos</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.
-        </p>
-      </header>
-
+    <div className="space-y-5">
       {enrollment.error && (
         <Alert variant="destructive">
           <CircleHelp aria-hidden="true" />
@@ -47,6 +42,6 @@ export function TeacherEnrollmentPanel({ enrollment, readOnly }: { enrollment: T
           />
         </div>
       )}
-    </section>
+    </div>
   )
 }

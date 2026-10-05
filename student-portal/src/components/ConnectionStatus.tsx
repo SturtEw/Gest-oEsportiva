@@ -16,9 +16,10 @@ export function ConnectionStatus({ status, message, lastUpdatedAt }: { status: S
   const Icon = item.icon
   const text = status === 'offline' && lastUpdatedAt ? `${item.label} · última atualização às ${formatDateTime(lastUpdatedAt)}` : item.label
   return <div className="group/status relative" title={message}>
-    <Badge variant="outline" aria-live="polite" aria-label={`${text}. ${message}`} className={`h-8 gap-1.5 rounded-full border-transparent px-3 text-[11px] font-semibold ${item.className}`}>
+    {/* Icon-only below `sm`: the label squeezed the section title in the mobile header. */}
+    <Badge variant="outline" aria-live="polite" aria-label={`${text}. ${message}`} className={`h-8 gap-1.5 rounded-full border-transparent px-2 text-[11px] font-semibold sm:px-3 ${item.className}`}>
       <Icon aria-hidden="true" className={`size-3.5 ${status === 'live' ? 'animate-pulse' : status === 'connecting' || status === 'reconnecting' ? 'animate-spin' : ''}`} />
-      <span className="hidden sm:inline">{text}</span><span className="sm:hidden">{item.label}</span>
+      <span className="hidden sm:inline">{text}</span>
     </Badge>
     <div className="pointer-events-none absolute right-0 top-full z-30 mt-2 hidden w-72 rounded-xl border border-border bg-white p-3 text-xs leading-5 text-muted-foreground shadow-lg group-hover/status:block group-focus-within/status:block">{message}</div>
   </div>

@@ -80,6 +80,8 @@
   --color-notice-border: var(--notice-border);
   --color-notice-foreground: var(--notice-foreground);
   --color-success: var(--success);
+  /* AppShell badges use bg-coral-500; Tailwind has no coral palette, so they rendered with no background. */
+  --color-coral-500: var(--coral);
   --color-danger-soft: var(--danger-soft);
   --color-danger-soft-foreground: var(--danger-soft-foreground);
   --color-eyebrow: var(--eyebrow);
@@ -139,6 +141,17 @@
   button,
   a {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Tailwind v4's preflight uses the default cursor on buttons. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* Long words (e-mails, names without spaces) wrap instead of overflowing. */
+  h1, h2, h3, h4, h5, h6, p, li, dd, dt, label, legend {
+    overflow-wrap: break-word;
   }
 
   ::selection {

@@ -21,7 +21,7 @@ export { ApiError, request, API_BASE }
 export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi }
 export { teacherApi, enrollmentApi }
 export type { CreateScheduledClass } from './api/teacher'
-export type { AccountStatusResponse, RegisterInput, RegisterResponse } from './api/auth'
+export type { AccountStatusResponse, RegisterInput, RegisterResponse, TeacherRegisterInput, TeacherRegisterResponse } from './api/auth'
 export type { JoinRequestScope } from './api/enrollment'
 
 export const api = {

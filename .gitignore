@@ -47,3 +47,6 @@ htmlcov/
 
 # MongoDB
 /data/db
+
+# Kombai scratch (QA screenshots, seed scripts, local DB dumps)
+.kombai/tmp/

@@ -3,7 +3,7 @@
 ## Perfis e estados
 
 - **Aluno:** cadastro por e-mail/senha ou Google; conta ativa após o cadastro e sem turma até que a administração faça o vínculo.
-- **Professor:** cadastro por e-mail/senha ou Google cria uma solicitação `pendente`. Nenhuma ferramenta docente fica acessível até a aprovação do administrador raiz. Reprovação exige um motivo.
+- **Professor:** não há cadastro público. O administrador raiz gera um convite na aba **Professores** (e-mail, nome e turma opcionais, validade de 1 a 30 dias). O link `/convite-professor?token=...` vale uma única vez; quem o abre informa nome, senha (ou Google da mesma conta), documento, formação e área de atuação e entra já como professor `ativo`, com a turma do convite se ela ainda estiver sem professor. O servidor guarda só o SHA-256 do token, então o link aparece apenas na criação; para reenviar, gere um novo link (o anterior deixa de valer). Contas `pendente` antigas, criadas antes dos convites, continuam na fila de aprovação.
 - **Responsável:** não há cadastro público; a conta precisa ser provisionada e vinculada pela escola. O responsável pode alternar apenas entre alunos comprovadamente vinculados.
 - **Administrador raiz:** usa a aba **Professor / administrador**, mas continua identificado como `admin` no servidor. Navegar por uma área para inspeção não assume a identidade do professor ou aluno.
 

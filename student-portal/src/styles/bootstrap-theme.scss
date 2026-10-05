@@ -3,6 +3,16 @@
 //  (cores, fontes e tokens de design originais do projeto)
 // ======================================================================
 
+// Cascade layers. Most of the portal is written with Tailwind; only the login
+// and the account-status screens use Bootstrap components. Unlayered CSS beats
+// every layer, so a plain Bootstrap import overrode all Tailwind utilities: an
+// <h1 class="text-base"> rendered at 40px, every <p> got 16px of bottom margin,
+// buttons lost their radius. Bootstrap now lives in its own layer, above
+// Tailwind's preflight (its components still style raw elements) and below
+// Tailwind's components/utilities. This statement must be the first CSS the
+// page loads — main.tsx imports this file before index.css.
+@layer theme, base, bootstrap, components, utilities;
+
 $font-family-sans-serif:      "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 $font-family-display:         "Manrope", "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
@@ -96,12 +106,76 @@ $container-max-widths: (
   xxl: 1400px
 );
 
-// ===== Bootstrap core =====
-@import "bootstrap/scss/bootstrap";
+// ===== Bootstrap configuration (emits no CSS) =====
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+// Bootstrap utilities whose class names Tailwind also defines, with other values.
+// Bootstrap marks utilities !important, so they won even inside a lower layer:
+// `p-5` meant 1.25rem in the Tailwind views and rendered as 3rem, `border`
+// forced Bootstrap's border colour, `rounded` 1rem instead of .25rem. Tailwind
+// owns these names; the Bootstrap screens use the Tailwind scale too.
+$utilities: map-remove(
+  $utilities,
+  "margin", "margin-x", "margin-y", "margin-top", "margin-end", "margin-bottom", "margin-start",
+  "negative-margin", "negative-margin-x", "negative-margin-y", "negative-margin-top",
+  "negative-margin-end", "negative-margin-bottom", "negative-margin-start",
+  "padding", "padding-x", "padding-y", "padding-top", "padding-end", "padding-bottom", "padding-start",
+  "gap", "row-gap", "column-gap",
+  "border", "shadow"
+);
+// Keep rounded-0…5 / -circle / -pill (no Tailwind equivalent); drop bare `.rounded`.
+$_rounded: map-get($utilities, "rounded");
+$utilities: map-merge($utilities, ("rounded": map-merge($_rounded, (values: map-remove(map-get($_rounded, values), null)))));
+
+@layer bootstrap {
+  // Same stack as bootstrap/scss/bootstrap.scss minus `reboot` and `type`:
+  // Tailwind's preflight is the single element reset (two resets fighting made
+  // every heading and paragraph spacing depend on which one won), and `type`
+  // only @extends reboot's headings.
+  @import "bootstrap/scss/root";
+  @import "bootstrap/scss/images";
+  @import "bootstrap/scss/containers";
+  @import "bootstrap/scss/grid";
+  @import "bootstrap/scss/tables";
+  @import "bootstrap/scss/forms";
+  @import "bootstrap/scss/buttons";
+  @import "bootstrap/scss/transitions";
+  @import "bootstrap/scss/dropdown";
+  @import "bootstrap/scss/button-group";
+  @import "bootstrap/scss/nav";
+  @import "bootstrap/scss/navbar";
+  @import "bootstrap/scss/card";
+  @import "bootstrap/scss/accordion";
+  @import "bootstrap/scss/breadcrumb";
+  @import "bootstrap/scss/pagination";
+  @import "bootstrap/scss/badge";
+  @import "bootstrap/scss/alert";
+  @import "bootstrap/scss/progress";
+  @import "bootstrap/scss/list-group";
+  @import "bootstrap/scss/close";
+  @import "bootstrap/scss/toasts";
+  @import "bootstrap/scss/modal";
+  @import "bootstrap/scss/tooltip";
+  @import "bootstrap/scss/popover";
+  @import "bootstrap/scss/carousel";
+  @import "bootstrap/scss/spinners";
+  @import "bootstrap/scss/offcanvas";
+  @import "bootstrap/scss/placeholders";
+  @import "bootstrap/scss/helpers";
+  @import "bootstrap/scss/utilities/api";
 
 // ======================================================================
 //  Classes utilitárias customizadas do projeto (Bootstrap-friendly)
 // ======================================================================
+
+// Reboot behaviour the Bootstrap forms relied on (preflight leaves labels inline,
+// so `.form-label`'s bottom margin had no effect).
+.form-label { display: inline-block; }
 
 :root {
   --bs-primary-rgb: #{to-rgb($primary)};
@@ -392,11 +466,4 @@ body {
 .badge-ge-notice  { background: #FFFDF7; color: #896622; border: 1px solid #E8DDBE; }
 .badge-ge-hero    { background: rgba(255,255,255,.10); color: #FFFFFF; backdrop-filter: blur(4px); }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+} // @layer bootstrap

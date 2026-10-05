@@ -32,6 +32,8 @@ function useIsDesktop() {
 export interface NavItem {
   id: string
   label: string
+  /** Label for the mobile bottom bar, where long labels get truncated. */
+  short?: string
   icon: ComponentType<{ className?: string }>
   badge?: number
   badgeVariant?: 'emerald' | 'amber' | 'coral' | 'blue'
@@ -43,6 +45,8 @@ export interface AppShellProps {
   onNavigate: (id: string) => void
   roleLabel: string
   userName: string
+  /** Second line of the top header, under the current section label. Defaults to userName. */
+  subtitle?: string
   monogram: string
   onLogout: () => void
   connection?: { status: ConnectionStatusValue; message: string; lastUpdatedAt: string | null }
@@ -67,12 +71,17 @@ const SIDEBAR_BADGE_VARIANTS = {
   blue: 'bg-blue-500/20 text-blue-500',
 } as const
 
+// The bottom bar shows up to five destinations; the rest stay in the drawer.
+const MOBILE_NAV_LIMIT = 5
+const MOBILE_GRID_COLS = ['grid-cols-1', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5'] as const
+
 export function AppShell({
   nav,
   active,
   onNavigate,
   roleLabel,
   userName,
+  subtitle,
   monogram,
   onLogout,
   connection,
@@ -126,6 +135,9 @@ export function AppShell({
     }
   }, [menuOpen])
 
+  const activeItem = nav.find((item) => item.id === active)
+  const mobileNav = nav.slice(0, MOBILE_NAV_LIMIT)
+
   const handleNavClick = (id: string) => {
     onNavigate(id)
     if (!isDesktop) setMenuOpen(false)
@@ -143,12 +155,12 @@ export function AppShell({
           onClick={() => handleNavClick(item.id)}
           aria-current={isActive ? 'page' : undefined}
           className={cn(
-            'relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors',
-            isActive ? 'text-emerald-600' : 'text-muted-foreground',
+            'relative mx-0.5 my-1 flex min-w-0 flex-col items-center gap-1 rounded-lg py-1.5 text-[11px] font-semibold transition-colors',
+            isActive ? 'bg-secondary text-primary' : 'text-muted-foreground',
           )}
         >
           <Icon className="size-5" aria-hidden="true" />
-          <span className="truncate px-1">{item.label}</span>
+          <span className="max-w-full truncate px-1">{item.short ?? item.label}</span>
           {item.badge ? (
             <span
               className={cn(
@@ -172,12 +184,13 @@ export function AppShell({
         aria-current={isActive ? 'page' : undefined}
         className={cn(
           'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
+          // Same active treatment as the student sidebar (lime accent on the dark green).
           isActive
-            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+            ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground'
             : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         )}
       >
-        <Icon className={cn('size-[18px] shrink-0', isActive ? 'text-emerald-600' : 'text-sidebar-foreground/70')} aria-hidden="true" />
+        <Icon className={cn('size-[18px] shrink-0', isActive ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/70')} aria-hidden="true" />
         <span className="flex-1 truncate">{item.label}</span>
         {item.badge ? (
           <span
@@ -195,11 +208,16 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    // From lg up the sidebar is a sticky flex column (as in the student area), not
+    // fixed: anything rendered above the shell (impersonation banners) used to slide
+    // under a fixed sidebar and get cut off.
+    <div className="min-h-screen bg-background lg:flex">
       <aside
         ref={sidebarRef}
+        id="sidebar"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200',
+          'lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0',
           menuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
         aria-label="Navegação principal"
@@ -207,14 +225,15 @@ export function AppShell({
       >
         <div className="flex items-center justify-between gap-3 px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
+            {/* Same mark as the student sidebar. emerald-700 text on the dark green was nearly unreadable. */}
             <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-extrabold text-white"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 font-display text-sm font-extrabold text-sidebar-primary"
               aria-hidden="true"
             >
               GE
             </span>
             <div className="min-w-0">
-              <p className="truncate font-display text-[13px] font-extrabold tracking-wide text-emerald-700 dark:text-emerald-300">
+              <p className="truncate font-display text-[13px] font-extrabold tracking-wide text-sidebar-foreground">
                 GESTÃO ESPORTIVA
               </p>
               <p className="truncate text-[11px] text-sidebar-foreground/60">{roleLabel}</p>
@@ -230,7 +249,7 @@ export function AppShell({
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="Menu de navegação">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-3" aria-label="Menu de navegação">
           {nav.map((item) => {
             const isActive = item.id === active
             return renderNavItem(item, isActive, false)
@@ -270,9 +289,9 @@ export function AppShell({
         />
       )}
 
-      <div className="lg:pl-[280px]">
+      <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6">
+          <div className="flex min-h-[68px] items-center gap-3 px-4 sm:px-6">
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
@@ -284,13 +303,15 @@ export function AppShell({
               <Menu className="size-5" />
             </button>
 
+            {/* Current section + context line, as in the student header. The page's own
+                heading carries the h1; the user's name stays in the sidebar footer. */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {roleLabel}
+              <p className="truncate text-[10px] font-bold uppercase tracking-[0.15em] text-eyebrow">
+                {activeItem?.label ?? roleLabel}
               </p>
-              <h1 className="truncate font-display text-base font-extrabold text-foreground sm:text-lg">
-                {userName}
-              </h1>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {subtitle ?? userName}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -397,11 +418,14 @@ export function AppShell({
 
       {!isDesktop && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm"
+          className={cn(
+            'fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm',
+            MOBILE_GRID_COLS[mobileNav.length],
+          )}
           aria-label="Navegação rápida"
           role="navigation"
         >
-          {nav.slice(0, 4).map((item) => {
+          {mobileNav.map((item) => {
             const isActive = item.id === active
             return renderNavItem(item, isActive, true)
           })}

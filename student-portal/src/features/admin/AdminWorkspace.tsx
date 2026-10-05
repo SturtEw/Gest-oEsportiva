@@ -18,6 +18,7 @@ import { firstName, formatDate, initials } from '@/lib/formatters'
 import { GoogleAuthError, mountGoogleSignInButton } from '@/lib/google-identity'
 import type { AdminClass, AdminTeacher, SessionUser, StudentPortalSnapshot, TeacherApplication, UnassignedStudent } from '@/lib/types'
 import { RoleSelector } from '@/components/RoleSelector'
+import { TeacherInvitesPanel } from './TeacherInvitesPanel'
 
 type AdminTab = 'teachers' | 'students' | 'classes' | 'teacher-tools' | 'student-inspection' | 'account'
 interface Summary { professores_pendentes: number; notificacoes_pendentes: number; alunos_sem_turma: number; turmas: number }
@@ -205,8 +206,9 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
   return <AppShell
     nav={[
       { id: 'teachers', label: 'Professores', icon: GraduationCap, badge: summary.professores_pendentes || undefined },
-      { id: 'students', label: 'Alunos', icon: Users, badge: summary.alunos_sem_turma || undefined },
-      { id: 'classes', label: 'Turmas', icon: BookOpen, badge: summary.turmas || undefined },
+      // Coral (default) = needs action; a plain count of classes is informational.
+      { id: 'students', label: 'Alunos', icon: Users, badge: summary.alunos_sem_turma || undefined, badgeVariant: 'amber' },
+      { id: 'classes', label: 'Turmas', icon: BookOpen, badge: summary.turmas || undefined, badgeVariant: 'emerald' },
       { id: 'teacher-tools', label: 'Professor', icon: Activity },
       { id: 'student-inspection', label: 'Aluno', icon: Eye },
       { id: 'account', label: 'Conta', icon: KeyRound },
@@ -215,6 +217,7 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
     onNavigate={(id) => setTab(id as AdminTab)}
     roleLabel="Administração raiz"
     userName={adminName}
+    subtitle="Administração raiz · contas, turmas e matrículas"
     monogram={initials(adminName)}
     onLogout={onLogout}
     connection={connection}
@@ -222,7 +225,7 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
   >
     <>
     <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="type-title text-2xl font-extrabold text-foreground sm:text-3xl">Olá, {firstName(adminName)}.</h1><p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">Aprove professores, vincule matrículas e consulte dados em modo somente leitura.</p></div><Button variant="outline" className="h-10 w-fit shrink-0 rounded-xl" onClick={refresh}><RefreshCw aria-hidden="true" />Atualizar dados</Button></div>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="type-title text-2xl font-extrabold text-foreground sm:text-3xl">Olá, {firstName(adminName)}.</h1><p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">Convide professores, vincule matrículas e consulte dados em modo somente leitura.</p></div><Button variant="outline" className="h-10 w-fit shrink-0 rounded-xl" onClick={refresh}><RefreshCw aria-hidden="true" />Atualizar dados</Button></div>
 
       {notice && <Alert className="mb-5 border-[#D5E6CE] bg-[#F6FAF2]"><Check aria-hidden="true" /><AlertDescription className="flex items-center justify-between gap-3"><span>{notice}</span><Button variant="ghost" size="icon-xs" aria-label="Fechar aviso" onClick={() => setNotice(null)}><X aria-hidden="true" /></Button></AlertDescription></Alert>}
       {error && <Alert variant="destructive" className="mb-5"><CircleAlert aria-hidden="true" /><AlertTitle>Não foi possível concluir</AlertTitle><AlertDescription className="mt-2 flex items-center justify-between gap-3"><span>{error}</span><Button variant="outline" size="sm" onClick={() => { setError(null); refresh() }}>Tentar novamente</Button></AlertDescription></Alert>}
@@ -231,9 +234,13 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
         {[{title:'Professores pendentes', value:summary.professores_pendentes, icon:GraduationCap, tone:'warning' as const}, {title:'Alunos sem turma', value:summary.alunos_sem_turma, icon:Users, tone:'info' as const}, {title:'Turmas ativas', value:summary.turmas, icon:BookOpen, tone:'positive' as const}].map((item) => { const Icon = item.icon; return <KpiCard key={item.title} tile={{ id: item.title, label: item.title, value: loading ? null : item.value, icon: Icon, tone: item.tone }} /> })}
       </div>
 
-      {tab === 'teachers' && (
+      {tab === 'teachers' && <TeacherInvitesPanel classes={classes} revision={revision} />}
+
+      {/* Legacy queue: public teacher signup is closed, so only accounts created
+          before the invite flow can still be pending. Hidden when empty. */}
+      {tab === 'teachers' && visibleApplications.length > 0 && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-xl font-bold">Professores aguardando análise</h2><p className="mt-1 text-sm text-muted-foreground">Revise os dados informados. O acesso só será liberado após aprovação.</p></div><Badge variant="outline" className="rounded-full">{visibleApplications.length} pendentes</Badge></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-xl font-bold">Professores aguardando análise</h2><p className="mt-1 text-sm text-muted-foreground">Cadastros antigos, feitos antes dos convites. Revise os dados informados; o acesso só é liberado após aprovação.</p></div><Badge variant="outline" className="rounded-full">{visibleApplications.length} pendentes</Badge></div>
           {loading ? <div className="space-y-3"><Skeleton className="h-24 rounded-2xl" /><Skeleton className="h-24 rounded-2xl" /></div> : visibleApplications.length === 0 ? <EmptyState icon={GraduationCap} title="Nenhum cadastro pendente" body="Novas inscrições de professores aparecerão nesta fila." /> : <div className="space-y-3">{visibleApplications.map((application) => <Card key={application.id} className="border-0 shadow-none ring-1 ring-border"><CardContent className="flex flex-col justify-between gap-4 p-5 md:flex-row md:items-center"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-display text-lg font-bold">{application.nome}</h3><Badge variant="outline" className="rounded-full bg-[#FFF5DB] text-[#896622]">Aguardando aprovação</Badge></div><p className="mt-1 text-sm text-muted-foreground">{application.email}</p><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground"><span>Formação: <strong className="text-foreground">{application.formacao_academica}</strong></span><span>Atuação: <strong className="text-foreground">{application.area_atuacao}</strong></span><span>Documento: <strong className="text-foreground">{application.documento_tipo?.toUpperCase()} ·•••• {application.documento_final}</strong></span></div><p className="mt-2 text-[11px] text-muted-foreground">Cadastro em {formatDate(application.dataCriacao)}</p></div><div className="flex shrink-0 flex-wrap gap-2"><Button variant="outline" className="rounded-xl border-red-200 text-red-800 hover:bg-red-50" onClick={() => { setSelectedApplication(application); setDecision('reject') }}><X aria-hidden="true" />Reprovar</Button><Button className="rounded-xl" onClick={() => { setSelectedApplication(application); setDecision('approve') }}><Check aria-hidden="true" />Aprovar professor</Button></div></CardContent></Card>)}</div>}
         </div>
       )}

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, Eye, EyeOff, KeyRound, LogOut, Mail, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Toaster, toast } from 'sonner'
 import { LoginScreen } from '@/components/LoginScreen'
+import { TeacherInviteScreen } from '@/components/TeacherInviteScreen'
+import { isTeacherInvitePath, teacherInviteTokenFromLocation } from '@/lib/teacher-invite'
 import { AdminWorkspace } from '@/features/admin/AdminWorkspace'
 import { TeacherArea } from '@/features/teacher/TeacherArea'
 import { StudentArea } from '@/features/student/StudentArea'
@@ -29,10 +31,12 @@ function AppContent({ session }: { session: Session }) {
     const params = new URLSearchParams(window.location.search)
     return params.get('token')
   }, [])
+  // `/convite-professor?token=` also carries a token; it is not a password reset.
+  const [onTeacherInvite, setOnTeacherInvite] = useState(() => isTeacherInvitePath())
   const isResetRoute = useMemo(() => {
-    if (typeof window === 'undefined') return false
+    if (typeof window === 'undefined' || onTeacherInvite) return false
     return window.location.pathname.includes('reset-senha') || resetToken !== null
-  }, [resetToken])
+  }, [resetToken, onTeacherInvite])
 
   // Single Toaster instance for the entire app (sonner uses portal)
   const toaster = <Toaster position="bottom-right" richColors closeButton />
@@ -70,11 +74,26 @@ function AppContent({ session }: { session: Session }) {
     )
   }
 
+  if (onTeacherInvite && session.status !== 'loading') {
+    return (
+      <>
+        <TeacherInviteScreen
+          token={teacherInviteTokenFromLocation()}
+          signedInAs={user}
+          onRegistered={(newUser) => { setOnTeacherInvite(false); session.acceptRegistration(newUser) }}
+          onLogout={() => void session.logout()}
+          onLeave={() => setOnTeacherInvite(false)}
+        />
+        {toaster}
+      </>
+    )
+  }
+
   if (session.status === 'loading') {
     return (
       <>
         <main className="d-flex align-items-center justify-content-center bg-body min-vh-100">
-          <div className="d-flex align-items-center gap-3 text-ge-muted" style={{ fontSize: 14 }}>
+          <div className="d-flex align-items-center gap-4 text-ge-muted" style={{ fontSize: 14 }}>
             <RefreshCw aria-hidden="true" className="spinner-border spinner-border-sm" style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />
             Verificando sua sessão…
           </div>
@@ -137,7 +156,7 @@ function AppContent({ session }: { session: Session }) {
     return (
       <>
         <ImpersonationBanner />
-        {isImpersonating && <p className="border-b bg-amber-50 px-4 py-2 text-sm">Modo de consulta: alterações estão desativadas.</p>}
+        {isImpersonating && <p className="border-b bg-amber-50 px-6 py-2 text-sm">Modo de consulta: alterações estão desativadas.</p>}
         <TeacherArea key={target?.id ?? user.id} name={viewUser.nome} onLogout={() => void session.logout()} />
         {toaster}
       </>
@@ -205,7 +224,7 @@ function AppContent({ session }: { session: Session }) {
         <>
           <ImpersonationBanner />
           <main className="page-container d-flex align-items-center justify-content-center min-vh-100">
-            <div className="portal-card p-5 text-center" style={{ maxWidth: 448 }}>
+            <div className="portal-card p-12 text-center" style={{ maxWidth: 448 }}>
               <p className="mb-0 fw-semibold">Escolha um aluno vinculado para continuar.</p>
             </div>
           </main>
@@ -217,7 +236,7 @@ function AppContent({ session }: { session: Session }) {
     return (
       <>
         <ImpersonationBanner />
-        {isImpersonating && <p className="border-b bg-amber-50 px-4 py-2 text-sm">Modo de consulta: alterações estão desativadas.</p>}
+        {isImpersonating && <p className="border-b bg-amber-50 px-6 py-2 text-sm">Modo de consulta: alterações estão desativadas.</p>}
         <StudentArea
           key={`${user.id}:${target?.id ?? 'self'}`}
           user={viewUser}
@@ -315,9 +334,9 @@ function ResetPasswordScreen({ initialToken }: { initialToken: string | null }) 
   }
 
   return (
-    <main className="d-flex align-items-center justify-content-center bg-body min-vh-100 px-4 py-5 py-md-10">
-      <div className="portal-card p-4 p-sm-5" style={{ maxWidth: 520, width: '100%' }}>
-        <div className="d-flex justify-content-center mb-4">
+    <main className="d-flex align-items-center justify-content-center bg-body min-vh-100 px-6 py-12">
+      <div className="portal-card p-6 sm:p-12" style={{ maxWidth: 520, width: '100%' }}>
+        <div className="d-flex justify-content-center mb-6">
           <div
             className="d-flex align-items-center justify-content-center rounded-4"
             style={{
@@ -334,11 +353,11 @@ function ResetPasswordScreen({ initialToken }: { initialToken: string | null }) 
           </div>
         </div>
 
-        <div className="text-center mb-4">
+        <div className="text-center mb-6">
           <h1 className="type-title mb-0" style={{ fontSize: 26, fontWeight: 800, color: '#18372F' }}>
             {success ? 'Senha redefinida' : !hasToken ? 'Link inválido' : 'Criar nova senha'}
           </h1>
-          <p className="mt-3 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <p className="mt-4 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
             {success
               ? 'Sua senha foi atualizada com sucesso. Use a nova senha para entrar na sua conta.'
               : !hasToken
@@ -348,7 +367,7 @@ function ResetPasswordScreen({ initialToken }: { initialToken: string | null }) 
         </div>
 
         {error && (
-          <div className="alert alert-danger d-flex align-items-start gap-2 rounded-3 mb-4" role="alert" style={{ fontSize: 14 }}>
+          <div className="alert alert-danger d-flex align-items-start gap-2 rounded-3 mb-6" role="alert" style={{ fontSize: 14 }}>
             <span className="mt-1 d-flex"><AlertCircle aria-hidden="true" style={{ width: 18, height: 18 }} /></span>
             <div className="flex-grow-1">{error}</div>
           </div>
@@ -365,7 +384,7 @@ function ResetPasswordScreen({ initialToken }: { initialToken: string | null }) 
             <Mail aria-hidden="true" style={{ width: 18, height: 18 }} />
           </button>
         ) : hasToken ? (
-          <form className="d-grid gap-3" onSubmit={(e) => void submit(e)} noValidate>
+          <form className="d-grid gap-4" onSubmit={(e) => void submit(e)} noValidate>
             <div className="position-relative">
               <label htmlFor="reset-new" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>Nova senha</label>
               <div className="position-relative">
@@ -442,7 +461,7 @@ function ResetPasswordScreen({ initialToken }: { initialToken: string | null }) 
 
         <button
           type="button"
-          className="btn btn-outline-secondary mt-3 w-100 d-flex align-items-center justify-content-center gap-2 border-0 text-ge-muted"
+          className="btn btn-outline-secondary mt-4 w-100 d-flex align-items-center justify-content-center gap-2 border-0 text-ge-muted"
           style={{ borderRadius: 16 }}
           onClick={goToLogin}
         >
@@ -471,9 +490,9 @@ function PendingApproval({
   }, [refreshSession])
 
   return (
-    <main className="bg-body min-vh-100 px-4 py-5 py-md-10">
-      <header className="page-container d-flex align-items-center justify-content-between mb-5">
-        <div className="d-flex align-items-center gap-3">
+    <main className="bg-body min-vh-100 px-6 py-12">
+      <header className="page-container d-flex align-items-center justify-content-between mb-12">
+        <div className="d-flex align-items-center gap-4">
           <span
             className="d-flex align-items-center justify-content-center rounded-4 fw-extrabold"
             style={{
@@ -504,8 +523,8 @@ function PendingApproval({
       </header>
 
       <div className="mx-auto" style={{ maxWidth: 640 }}>
-        <div className="portal-card p-4 p-sm-5">
-          <div className="d-flex justify-content-center mb-4">
+        <div className="portal-card p-6 sm:p-12">
+          <div className="d-flex justify-content-center mb-6">
             <div
               className="d-flex align-items-center justify-content-center rounded-4"
               style={{ width: 56, height: 56, backgroundColor: '#FFF5DB', color: '#896622' }}
@@ -516,18 +535,18 @@ function PendingApproval({
 
           <div className="text-center">
             <span className="badge-ge badge-ge-notice mb-0">Cadastro em análise</span>
-            <h1 className="type-title mt-4 mb-0" style={{ fontSize: 30, fontWeight: 800 }}>
+            <h1 className="type-title mt-6 mb-0" style={{ fontSize: 30, fontWeight: 800 }}>
               Aguardando aprovação
             </h1>
-            <p className="mt-3 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+            <p className="mt-4 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
               Olá, {userName}. Sua conta de professor será ativada após a análise do administrador.
             </p>
-            <p className="mt-4 mb-0 rounded-3 bg-ge-light p-3 fw-medium text-center">
+            <p className="mt-6 mb-0 rounded-3 bg-ge-light p-4 fw-medium text-center">
               {email}
             </p>
           </div>
 
-          <div className="alert alert-warning mt-5 d-flex align-items-start gap-3 rounded-3 border-0" role="alert"
+          <div className="alert alert-warning mt-12 d-flex align-items-start gap-4 rounded-3 border-0" role="alert"
                style={{ backgroundColor: '#FFFDF7', color: '#896622' }}>
             <ShieldCheck aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0, marginTop: 2 }} />
             <div className="flex-grow-1">
@@ -543,7 +562,7 @@ function PendingApproval({
 
           <button
             type="button"
-            className="btn btn-ge-outline w-100 d-flex align-items-center justify-content-center gap-2 mt-5 fw-medium"
+            className="btn btn-ge-outline w-100 d-flex align-items-center justify-content-center gap-2 mt-12 fw-medium"
             style={{ borderRadius: 16 }}
             onClick={() => void refreshSession()}
           >
@@ -568,9 +587,9 @@ function AccountUnavailable({
   onRetry?: () => void
 }) {
   return (
-    <main className="d-flex align-items-center justify-content-center bg-body min-vh-100 px-4 py-5 py-md-10">
-      <div className="portal-card text-center p-5 p-md-7" style={{ maxWidth: 520 }}>
-        <div className="d-flex justify-content-center mb-4">
+    <main className="d-flex align-items-center justify-content-center bg-body min-vh-100 px-6 py-12">
+      <div className="portal-card text-center p-12" style={{ maxWidth: 520 }}>
+        <div className="d-flex justify-content-center mb-6">
           <div
             className="d-flex align-items-center justify-content-center rounded-4"
             style={{ width: 56, height: 56, backgroundColor: '#FFF5DB', color: '#896622' }}
@@ -581,10 +600,10 @@ function AccountUnavailable({
         <h1 className="type-title mb-0" style={{ fontSize: 24, fontWeight: 800 }}>
           {title}
         </h1>
-        <p className="mt-3 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+        <p className="mt-4 mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
           {message}
         </p>
-        <div className="mt-5 d-flex flex-column flex-sm-row justify-content-center gap-2">
+        <div className="mt-12 d-flex flex-column flex-sm-row justify-content-center gap-2">
           {onRetry && (
             <button
               type="button"
