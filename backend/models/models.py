@@ -108,6 +108,9 @@ class User(BaseModel):
 
     is_root_admin: bool = False
 
+    # Self-service profile: preset id or base64 photo, always optional.
+    avatar: Optional[dict] = None
+
     # Pre-account-takeover defense. A password registration proves nothing about e-mail
     # ownership, so the account stays unverified until the owner confirms the address.
     # Unverified accounts cannot log in locally, and they only gain google_sub when the

@@ -16,14 +16,16 @@ import { trainingsApi } from './api/trainings'
 import { enrollmentApi } from './api/enrollment'
 import { activitiesApi } from './api/activities'
 import { individualWorkoutsApi } from './api/individualWorkouts'
+import { accountApi } from './api/account'
 import type { TrainingTournament } from '@/lib/types'
 
 export { ApiError, request, API_BASE }
 /** Domain modules merged into `api`. Keys must be unique across them (see api.test.ts). */
-export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi, activitiesApi, individualWorkoutsApi }
-export { teacherApi, enrollmentApi, activitiesApi, individualWorkoutsApi }
+export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi, activitiesApi, individualWorkoutsApi, accountApi }
+export { teacherApi, enrollmentApi, activitiesApi, individualWorkoutsApi, accountApi }
 export type { CreateScheduledClass } from './api/teacher'
 export type { PlanInput, RecurrenceRule, StudentPlanView, TeacherPlanSummary, WorkoutExercise, WorkoutPlan, WorkoutSession, WorkoutTemplate } from './api/individualWorkouts'
+export type { AccountInfo, AccountAvatar, DeactivateResult, DeleteResult } from './api/account'
 export type { ActivityChanges, ActivityInput, BracketInput, MatchResultInput, TeamInput } from './api/activities'
 export type { AccountStatusResponse, RegisterInput, RegisterResponse, TeacherRegisterInput, TeacherRegisterResponse } from './api/auth'
 export type { JoinRequestScope } from './api/enrollment'
@@ -37,6 +39,7 @@ export const api = {
   ...enrollmentApi,
   ...activitiesApi,
   ...individualWorkoutsApi,
+  ...accountApi,
   // Aliases preserving the previous flat method names used by call sites.
   adminSummary: adminApi.summary,
   adminNotifications: adminApi.notifications,

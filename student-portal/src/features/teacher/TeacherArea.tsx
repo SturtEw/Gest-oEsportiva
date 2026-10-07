@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, Dumbbell, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, Dumbbell, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -15,15 +15,17 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useImpersonation } from '@/hooks/useImpersonation'
 import { useTeacherEnrollment } from '@/hooks/useTeacherEnrollment'
 import { api, teacherApi } from '@/lib/api'
+import { GlobalSearchBar, type SearchTarget } from './search/GlobalSearchBar'
 import { formatDateTime, firstName, initials } from '@/lib/formatters'
-import type { PublicMessage, TeacherClass } from '@/lib/types'
+import type { ActivitySummary, PublicMessage, TeacherClass } from '@/lib/types'
 import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherWorkoutsView, prefetchTeacherView } from './sections'
+import { AccountManagement } from '@/features/account/AccountManagement'
 
-type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'convites' | 'alunos' | 'agenda'
+type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'convites' | 'alunos' | 'agenda' | 'conta'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -38,12 +40,14 @@ const VIEWS: Record<View, ViewMeta> = {
   convites: { label: 'Convites e pedidos', short: 'Convites', icon: UserPlus, eyebrow: 'Matrículas', description: 'Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.' },
   alunos: { label: 'Alunos', short: 'Alunos', icon: Trophy, eyebrow: 'Seus alunos', description: 'Todos os alunos das suas turmas em um só lugar.' },
   agenda: { label: 'Agenda', short: 'Agenda', icon: CalendarDays, eyebrow: 'Próximos 14 dias', description: 'As aulas marcadas para as próximas duas semanas. Para agendar uma aula, use o Painel.' },
+  conta: { label: 'Minha conta', short: 'Conta', icon: UserRound, eyebrow: 'Sua conta', description: 'Dados pessoais, avatar, senha e opções da sua conta.' },
 }
 
 export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => void }) {
   const [view, setView] = useState<View>('dashboard')
   const [classes, setClasses] = useState<TeacherClass[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [activities, setActivities] = useState<ActivitySummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeStudent, setActiveStudent] = useState<Student | null>(null)
@@ -71,6 +75,15 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
       .then(([dashboard, roster]) => { if (active) { setClasses(dashboard.classes); setStudents(roster.students) } })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar suas turmas.') })
       .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [revision])
+
+  // Activities feed the global search; loaded separately so failures here are silent.
+  useEffect(() => {
+    let active = true
+    api.teacherActivities()
+      .then((result) => { if (active) setActivities(result.atividades ?? []) })
+      .catch(() => undefined)
     return () => { active = false }
   }, [revision])
 
@@ -106,9 +119,23 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
       item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
       item('alunos'),
       item('agenda'),
+      item('conta'),
     ]
   }, [classes.length, enrollment.pendingCount])
   const meta = VIEWS[view]
+
+  // Global search: route the picked target to the right tab.
+  const goToSearchTarget = (target: SearchTarget) => {
+    if (target.kind === 'aluno') {
+      const found = students.find((student) => student.id === target.id)
+      setView('turmas')
+      if (found) setActiveStudent(found)
+    } else if (target.kind === 'turma') {
+      setView('turmas')
+    } else {
+      setView('atividades')
+    }
+  }
 
   const sendReply = async (event: FormEvent) => {
     event.preventDefault()
@@ -149,7 +176,20 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         monogram={initials(name)}
         onLogout={onLogout}
         connection={connection}
-        headerEnd={<RoleSelector />}
+        headerEnd={
+          <>
+            <div className="hidden md:block">
+              <GlobalSearchBar
+                classes={classes}
+                activities={activities.map((item) => ({ id: item.id, titulo: item.titulo, turma_nome: item.turma_nome }))}
+                students={students}
+                onPick={goToSearchTarget}
+                disabled={isImpersonating}
+              />
+            </div>
+            <RoleSelector />
+          </>
+        }
       >
         {notice && (
           <Alert className="mb-4 border-[#D5E6CE] bg-[#F6FAF2]">
@@ -279,6 +319,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
         {view === 'agenda' && <AgendaView revision={revision} />}
+
+        {view === 'conta' && <AccountManagement sessionUser={{ nome: name, tipo: 'professor' }} onAccountChanged={() => setRevision((value) => value + 1)} onSignedOut={onLogout} />}
         </Suspense>
         </SectionErrorBoundary>
         </section>

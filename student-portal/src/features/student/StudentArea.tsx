@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useRef, useState } from 'react'
-import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, RefreshCw, Users, X, Trophy } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, RefreshCw, Settings, Users, X, Trophy } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { useQuestionThread } from '@/hooks/useQuestionThread'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useImpersonation } from '@/hooks/useImpersonation'
 import { useStudentPortal } from '@/hooks/useStudentPortal'
+import { AccountManagement } from '@/features/account/AccountManagement'
 import { initials } from '@/lib/formatters'
 import type { LinkedChild, PortalSection, SessionUser } from '@/lib/types'
 
@@ -31,6 +32,7 @@ const sections: { id: PortalSection; label: string; short: string; icon: typeof 
   { id: 'registros', label: 'Ocorrências e justificativas', short: 'Registros', icon: BookOpen },
   { id: 'comunicados', label: 'Comunicados', short: 'Comunicados', icon: Bell },
   { id: 'duvidas', label: 'Dúvidas com o professor', short: 'Dúvidas', icon: MessageCircle },
+  { id: 'conta', label: 'Minha conta', short: 'Conta', icon: Settings },
 ]
 
 /** Placeholder while a section's chunk downloads (first visit only). */
@@ -112,6 +114,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       case 'registros': return <RecordsSection incidents={snapshot.ocorrencias} justifications={snapshot.justificativas} />
       case 'comunicados': return <AnnouncementsSection announcements={snapshot.comunicados} />
       case 'duvidas': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">As dúvidas estão disponíveis apenas para consulta nesta visualização.</p> : <QuestionThread alunoId={studentId} turma={snapshot.turma} professorNome={snapshot.professor_nome} sessionUser={user} messages={questions.messages} loading={questions.loading} error={questions.error} onSend={questions.send} onRetry={questions.retry} onRefresh={questions.refresh} />
+      case 'conta': return <AccountManagement sessionUser={{ nome: user.nome, email: user.email, tipo: user.tipo, tem_senha: user.tem_senha }} onAccountChanged={refresh} onSignedOut={onLogout} />
     }
   }
 

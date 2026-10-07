@@ -769,6 +769,12 @@ async def login(payload: LoginInput, response: Response):
     if user_doc.get("status") == "pendente" and actual_role != "professor":
         raise HTTPException(status_code=403, detail="Esta conta não está ativa")
 
+    # Self-deactivated accounts come back to life on a successful login: valid
+    # credentials prove identity, so no separate reactivation flow is needed.
+    if user_doc.get("status") == "inativo":
+        await db.users.update_one({"id": user_doc["id"]}, {"$set": {"status": "ativo"}})
+        user_doc["status"] = "ativo"
+
     if user_doc.get("status") not in ("ativo", "pendente"):
         raise HTTPException(status_code=403, detail="Esta conta não está ativa")
 
