@@ -114,3 +114,70 @@ async def test_invite_marks_email_sent_on_success(invite_db, monkeypatch):
     assert result["email_erro"] is None
     stored = invite_db.professor_convites.documents[0]
     assert stored["email_enviado"] is True
+
+
+# ─── 3. Resend provider (RESEND_API_KEY) ─────────────────────────────────────
+async def test_resend_is_used_when_api_key_is_set(monkeypatch):
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("EMERGENT_EMAIL_KEY", raising=False)
+    import lib.emailx as emailx
+    assert emailx.provider_name() == "resend"
+
+    sent = {}
+
+    async def fake_post(self, url, **kwargs):
+        sent["url"] = url
+        sent["json"] = kwargs["json"]
+        sent["auth"] = kwargs["headers"]["Authorization"]
+
+        class R:
+            status_code = 200
+            headers = {"content-type": "application/json"}
+            def json(self):
+                return {"id": "res_123"}
+        return R()
+
+    monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
+    monkeypatch.setenv("EMAIL_FROM", "onboarding@resend.dev")
+    monkeypatch.setenv("EMAIL_FROM_NAME", "Gestão Esportiva Escolar")
+    result = await emailx.send_email(to="pessoa@gmail.com", subject="Teste", html="<b>Olá</b>")
+    assert result == "res_123"
+    assert sent["url"] == "https://api.resend.com/emails"
+    assert sent["auth"] == "Bearer re_test_key"
+    # Resend requires the full From header (name + address).
+    assert sent["json"]["from"] == "Gestão Esportiva Escolar <onboarding@resend.dev>"
+    assert sent["json"]["to"] == ["pessoa@gmail.com"]
+
+
+async def test_resend_without_from_address_fails_clearly(monkeypatch):
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("EMAIL_FROM", raising=False)
+    monkeypatch.delenv("RESEND_FROM", raising=False)
+    import lib.emailx as emailx
+    from fastapi import HTTPException  # noqa: F401 — not used here, EmailSendError is
+    with pytest.raises(emailx.EmailSendError) as error:
+        await emailx.send_email(to="pessoa@gmail.com", subject="T", html="<b>x</b>")
+    assert "EMAIL_FROM" in str(error.value)
+
+
+async def test_resend_api_error_surfaces_the_reason(monkeypatch):
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.setenv("EMAIL_FROM", "onboarding@resend.dev")
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    import lib.emailx as emailx
+
+    async def fake_post(self, url, **kwargs):
+        class R:
+            status_code = 403
+            headers = {"content-type": "application/json"}
+            text = '{"message":"You can only send from a verified domain"}'
+            def json(self):
+                return {"message": "You can only send from a verified domain"}
+        return R()
+
+    monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
+    with pytest.raises(emailx.EmailSendError) as error:
+        await emailx.send_email(to="pessoa@gmail.com", subject="T", html="<b>x</b>")
+    assert "verified domain" in str(error.value)

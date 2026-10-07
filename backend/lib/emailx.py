@@ -2,8 +2,10 @@
 
 1. SMTP (preferred when configured) — reads SMTP_HOST, SMTP_PORT, SMTP_USER,
    SMTP_PASS and EMAIL_FROM. Stdlib smtplib + asyncio.to_thread (no extra dep).
-2. Emergent managed Resend integration (fallback) — the platform-owned
-   provider used before this refactor.
+2. Resend HTTP API (when RESEND_API_KEY is set) — direct equivalent of the
+   Node `new Resend(key).emails.send(...)`, but server-side only so the key
+   never reaches the browser. From: EMAIL_FROM (+ EMAIL_FROM_NAME display).
+3. Emergent managed integration (last fallback) — the platform-owned provider.
 
 All failures raise EmailSendError with a short actionable reason, so HTTP
 handlers can return a 5xx and the frontend can show a real error instead of
@@ -62,7 +64,20 @@ def _smtp_from() -> str:
 
 
 def provider_name() -> str:
-    return "smtp" if smtp_config() else "emergent"
+    if smtp_config():
+        return "smtp"
+    if _env("RESEND_API_KEY"):
+        return "resend"
+    return "emergent"
+
+
+def _resend_from() -> str:
+    """Resend requires a full 'Name <addr>' or bare address From header."""
+    name = _env("EMAIL_FROM_NAME") or "Gestão Esportiva Escolar"
+    addr = _env("EMAIL_FROM") or _env("RESEND_FROM") or ""
+    if not addr:
+        return ""
+    return f"{name} <{addr}>" if name else addr
 
 
 # ---------- Guardrail gate (G2 + G3 structural checks — call on every send) ----------
@@ -250,6 +265,40 @@ async def _send_via_emergent(to: str, subject: str, html: str) -> str | None:
         raise EmailSendError("Falha de rede ao contatar o provedor de e-mail.") from e
 
 
+async def _send_via_resend(to: str, subject: str, html: str) -> str | None:
+    """Direct Resend HTTP API (equivalent of the Node `new Resend(key).emails.send`).
+
+    Only called server-side: the API key stays in the Render environment, never
+    in the browser bundle — frontend code must hit our HTTP routes instead.
+    """
+    key = _env("RESEND_API_KEY")
+    if not key:
+        raise EmailSendError("RESEND_API_KEY não configurada no ambiente do backend.")
+    from_addr = _resend_from()
+    if not from_addr:
+        raise EmailSendError(
+            "RESEND_API_KEY configurada, mas sem remetente: defina EMAIL_FROM "
+            "(ex.: onboarding@resend.dev no plano de testes) no ambiente."
+        )
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"from": from_addr, "to": [to], "subject": subject, "html": html},
+            )
+        if resp.status_code >= 400:
+            detail = resp.json().get("message", resp.text[:200]) if resp.headers.get("content-type", "").startswith("application/json") else resp.text[:200]
+            logger.error('{"event": "email_send_failed", "provider": "resend", "status": %d, "body": "%s"}', resp.status_code, detail)
+            raise EmailSendError(f"Resend recusou o envio (HTTP {resp.status_code}): {detail}")
+        return resp.json().get("id")
+    except EmailSendError:
+        raise
+    except httpx.HTTPError as e:
+        logger.error('{"event": "email_send_failed", "provider": "resend", "error": "%s"}', str(e)[:200])
+        raise EmailSendError("Falha de rede ao contatar o Resend.") from e
+
+
 async def send_email(*, to: str, subject: str, html: str) -> str | None:
     """Send one transactional email through the configured provider.
 
@@ -262,6 +311,8 @@ async def send_email(*, to: str, subject: str, html: str) -> str | None:
     try:
         if cfg:
             return await _send_via_smtp(cfg, to, subject, html)
+        if _env("RESEND_API_KEY"):
+            return await _send_via_resend(to, subject, html)
         return await _send_via_emergent(to, subject, html)
     except (EmailSendError, ValueError):
         raise
