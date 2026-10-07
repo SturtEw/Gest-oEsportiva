@@ -97,9 +97,11 @@ class RegisterAccountInput(BaseModel):
 
     data_nascimento: str | None = None
 
-    documento_tipo: Literal["cpf", "rg", "outro"]
+    # Documento é OPCIONAL na criação da conta (aluno e professor). Quando enviado,
+    # é normalizado e gravado como hash + últimos 4 dígitos.
+    documento_tipo: Literal["cpf", "rg", "outro"] | None = None
 
-    documento_numero: str = Field(min_length=5, max_length=40)
+    documento_numero: str | None = Field(default=None, max_length=40)
 
     formacao_academica: str | None = Field(default=None, min_length=2, max_length=160)
 
@@ -130,7 +132,10 @@ class RegisterAccountInput(BaseModel):
 
     @classmethod
 
-    def normalize_document(cls, value: str) -> str:
+    def normalize_document(cls, value: str | None) -> str | None:
+        if not value or not value.strip():
+            return None
+
         normalized = re.sub(r"[^0-9A-Za-z]", "", value).upper()
 
         if len(normalized) < 5:
@@ -376,9 +381,17 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
     if existing:
         raise HTTPException(status_code=409, detail="Este e-mail já possui uma conta. Entre ou solicite ajuda à escola.")
 
-    digest = _document_digest(payload.documento_numero)
+    has_document = bool(payload.documento_tipo and payload.documento_numero)
 
-    if await db.users.find_one({"documento_hash": digest}, {"_id": 1}):
+    if payload.documento_tipo and not payload.documento_numero:
+        raise HTTPException(status_code=400, detail="Informe o número do documento ou deixe o campo vazio")
+
+    if payload.documento_numero and not payload.documento_tipo:
+        raise HTTPException(status_code=400, detail="Informe o tipo do documento ou deixe o campo vazio")
+
+    digest = _document_digest(payload.documento_numero) if has_document else None
+
+    if digest and await db.users.find_one({"documento_hash": digest}, {"_id": 1}):
         raise HTTPException(status_code=409, detail="Este documento já está vinculado a uma conta")
 
     if payload.tipo == "aluno" and payload.data_nascimento:
@@ -420,11 +433,11 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
 
         "data_nascimento": payload.data_nascimento if payload.tipo == "aluno" else None,
 
-        "documento_tipo": payload.documento_tipo,
+        "documento_tipo": payload.documento_tipo if has_document else None,
 
         "documento_hash": digest,
 
-        "documento_final": payload.documento_numero[-4:],
+        "documento_final": payload.documento_numero[-4:] if has_document else None,
 
         "formacao_academica": payload.formacao_academica if payload.tipo == "professor" else None,
 

@@ -190,7 +190,7 @@ class Turma(BaseModel):
 
     ano: int
 
-    capacidade: int = Field(default=20, ge=1, le=99)
+    capacidade: int = Field(default=20, ge=1, le=500)
 
     alunos_ids: list[str] = []
 
@@ -206,7 +206,7 @@ class TurmaCreate(BaseModel):
 
     ano: int = Field(ge=2020, le=2100)
 
-    capacidade: int = Field(default=20, ge=1, le=99)
+    capacidade: int = Field(default=20, ge=1, le=500)
 
 
 class Aluno(BaseModel):

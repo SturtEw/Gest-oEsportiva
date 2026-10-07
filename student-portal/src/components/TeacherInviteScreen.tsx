@@ -15,7 +15,7 @@ const TEACHER_HERO: AuthHeroCopy = {
   footer: 'O acesso de professor é criado somente por convite do administrador.',
 }
 
-type DocumentType = 'cpf' | 'rg' | 'outro'
+type DocumentType = 'cpf' | 'rg' | 'outro' | ''
 
 interface Props {
   token: string
@@ -35,7 +35,7 @@ export function TeacherInviteScreen({ token, signedInAs, onRegistered, onLogout,
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [documentType, setDocumentType] = useState<DocumentType>('cpf')
+  const [documentType, setDocumentType] = useState<DocumentType>('')
   const [documentNumber, setDocumentNumber] = useState('')
   const [education, setEducation] = useState('')
   const [field, setField] = useState('')
@@ -102,7 +102,7 @@ export function TeacherInviteScreen({ token, signedInAs, onRegistered, onLogout,
     setError(null)
     if (fullName.trim().length < 3) { setError('Informe seu nome completo.'); return }
     if (provider === 'email' && password.length < 10) { setError('A senha precisa ter pelo menos 10 caracteres.'); return }
-    if (documentNumber.replace(/[^0-9A-Za-z]/g, '').length < 5) { setError('Informe um documento válido.'); return }
+    if (documentType && documentNumber.replace(/[^0-9A-Za-z]/g, '').length < 5) { setError('Informe um documento válido.'); return }
     if (education.trim().length < 2 || field.trim().length < 2) { setError('Informe sua formação e a área em que atua.'); return }
     setSubmitting(true)
     try {
@@ -112,8 +112,8 @@ export function TeacherInviteScreen({ token, signedInAs, onRegistered, onLogout,
         ...(provider === 'google' && googleToken ? { credential: googleToken } : {}),
         ...(provider === 'email' ? { senha: password } : {}),
         nome: fullName.trim(),
-        documento_tipo: documentType,
-        documento_numero: documentNumber,
+        documento_tipo: documentType || undefined,
+        documento_numero: documentType ? documentNumber : undefined,
         formacao_academica: education.trim(),
         area_atuacao: field.trim(),
       })
@@ -226,22 +226,23 @@ export function TeacherInviteScreen({ token, signedInAs, onRegistered, onLogout,
 
                 <div className="row g-3">
                   <div className="col-5">
-                    <label htmlFor="teacher-document-type" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>Documento <span aria-hidden="true" className="text-danger">*</span></label>
+                    <label htmlFor="teacher-document-type" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>Documento <span aria-hidden="true" className="text-muted">(opcional)</span></label>
                     <select
                       id="teacher-document-type" className="form-select" value={documentType} style={{ height: 51, borderRadius: 14 }}
-                      onChange={(event) => { const value = event.target.value; if (value === 'cpf' || value === 'rg' || value === 'outro') setDocumentType(value) }}
+                      onChange={(event) => { const value = event.target.value; if (value === 'cpf' || value === 'rg' || value === 'outro' || value === '') setDocumentType(value) }}
                     >
+                      <option value="">Não informar</option>
                       <option value="cpf">CPF</option>
                       <option value="rg">RG</option>
                       <option value="outro">Outro</option>
                     </select>
                   </div>
                   <div className="col-7">
-                    <label htmlFor="teacher-document-number" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>Número <span aria-hidden="true" className="text-danger">*</span></label>
+                    <label htmlFor="teacher-document-number" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>Número {documentType ? <span aria-hidden="true" className="text-danger">*</span> : <span aria-hidden="true" className="text-muted">(opcional)</span>}</label>
                     <input
-                      id="teacher-document-number" type="text" required minLength={5} maxLength={40} autoComplete="off"
+                      id="teacher-document-number" type="text" required={Boolean(documentType)} disabled={!documentType} minLength={documentType ? 5 : undefined} maxLength={40} autoComplete="off"
                       value={documentNumber} onChange={(event) => setDocumentNumber(event.target.value)}
-                      placeholder="Somente número ou letras" className="form-control" style={{ height: 51, borderRadius: 14 }}
+                      placeholder={documentType ? "Somente número ou letras" : "Escolha um tipo para informar"} className="form-control" style={{ height: 51, borderRadius: 14 }}
                     />
                   </div>
                   <div className="col-12">

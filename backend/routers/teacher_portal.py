@@ -4,10 +4,11 @@ import uuid
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel, Field, field_validator
 
 from lib.dates import ensure_aware, now_utc, today_in_app_tz, today_iso
 from lib.db import db
-from lib.realtime import publish_user_event
+from lib.realtime import publish_admin_event, publish_event, publish_user_event
 from lib.security import get_current_user
 from lib.impersonation import get_current_user_with_impersonation
 from models.models import AulaAgendaCreate, AulaAgendaUpdate, User
@@ -15,6 +16,31 @@ from models.models import AulaAgendaCreate, AulaAgendaUpdate, User
 
 async def publish_event_for_teacher(user_id: str) -> None:
     await publish_user_event(user_id, "agenda")
+
+
+class ClassUpdate(BaseModel):
+    """Teacher edits to their own class. At least one field must change."""
+
+    nome: str | None = Field(default=None, min_length=3, max_length=80)
+
+    modalidade: str | None = Field(default=None, min_length=2, max_length=40)
+
+    capacidade: int | None = Field(default=None, ge=1, le=500)
+
+    @field_validator("nome", "modalidade")
+
+    @classmethod
+
+    def collapse_spaces(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        cleaned = " ".join(value.split())
+
+        if not cleaned:
+            raise ValueError("O campo não pode ficar vazio")
+
+        return cleaned
 
 
 def _iso_sort_key(value) -> str:
@@ -43,6 +69,51 @@ async def teacher_dashboard(user: User = Depends(get_current_user_with_impersona
     ).to_list(length=200)
 
     return {"classes": [{**item, "total_alunos": len(item.get("alunos_ids", []))} for item in classes]}
+
+
+@router.patch("/classes/{turma_id}")
+
+async def update_class(turma_id: str, payload: ClassUpdate, user: User = Depends(get_current_user)):
+    """The assigned teacher edits their own class: name, modality or capacity."""
+    if user.tipo != "professor" or user.status != "ativo":
+        raise HTTPException(status_code=403, detail="Acesso disponível somente para professores aprovados")
+
+    turma = await db.turmas.find_one({"id": turma_id}, {"_id": 0, "id": 1, "nome": 1, "modalidade": 1, "capacidade": 1, "alunos_ids": 1, "professor_id": 1})
+
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+
+    if turma.get("professor_id") != user.id:
+        raise HTTPException(status_code=403, detail="Apenas o professor atribuído a esta turma pode editá-la")
+
+    changes: dict = {}
+
+    if payload.nome is not None and payload.nome != turma.get("nome"):
+        changes["nome"] = payload.nome
+
+    if payload.modalidade is not None and payload.modalidade != turma.get("modalidade"):
+        changes["modalidade"] = payload.modalidade
+
+    if payload.capacidade is not None and payload.capacidade != turma.get("capacidade", 20):
+        enrolled = len(turma.get("alunos_ids", []))
+
+        if payload.capacidade < enrolled:
+            raise HTTPException(status_code=409, detail=f"A turma já tem {enrolled} aluno(s); a capacidade não pode ser menor que isso")
+
+        changes["capacidade"] = payload.capacidade
+
+    if not changes:
+        return {"id": turma_id, "changed": False}
+
+    await db.turmas.update_one({"id": turma_id}, {"$set": changes})
+
+    # Students and admins see the new name/modality without waiting for a poll.
+    await publish_admin_event("classes")
+
+    for student_id in turma.get("alunos_ids", []):
+        await publish_event(student_id, "portal")
+
+    return {"id": turma_id, "changed": True, **changes}
 
 
 

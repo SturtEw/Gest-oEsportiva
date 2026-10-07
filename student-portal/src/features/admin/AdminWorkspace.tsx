@@ -75,8 +75,12 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
 
   useEffect(() => {
     let active = true
-    setLoading(true)
-    setError(null)
+    // Only the very first load shows skeletons and surfaces fetch errors; later
+    // revisions (after creating a class, assigning a teacher, realtime pings)
+    // revalidate in place. A background hiccup used to paint the whole screen
+    // with "Verifique sua conexão" and flash skeletons right after a successful
+    // action — the class was created, the UI just threw the refetch failure at it.
+    setLoading((wasLoading) => wasLoading || (classes.length === 0 && students.length === 0))
     Promise.all([
       api.adminSummary(),
       api.teacherApplications(),
@@ -96,7 +100,14 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
         setTeacherWorkspace(nextWorkspace.classes)
         if (googleConfig?.client_id) setGoogleClientId(googleConfig.client_id)
       })
-      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados administrativos.') })
+      .catch((cause: unknown) => {
+        if (!active) return
+        // Fail loudly only when there is nothing on screen yet; a refetch failure
+        // after a successful mutation must not erase the success notice.
+        if (classes.length === 0 && students.length === 0) {
+          setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados administrativos.')
+        }
+      })
       .finally(() => { if (active) { setLoading(false); setGoogleConfigLoaded(true) } })
     return () => { active = false }
   }, [revision, search])
@@ -389,7 +400,7 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
 
     <Dialog open={createClassOpen} onOpenChange={setCreateClassOpen}>
       <DialogContent className="rounded-3xl sm:max-w-md"><DialogHeader><DialogTitle className="font-display text-xl">Cadastrar turma</DialogTitle><DialogDescription>A turma será usada para vincular alunos e atribuir um professor depois.</DialogDescription></DialogHeader>
-        <form id="create-class-form" className="space-y-4" onSubmit={(event) => void handleCreateClass(event)}><Field><FieldLabel htmlFor="class-name">Nome da turma</FieldLabel><Input id="class-name" required minLength={3} maxLength={80} value={className} onChange={(event) => setClassName(event.target.value)} className="mt-2 h-11 rounded-xl" placeholder="Futsal sub-14" /></Field><Field><FieldLabel htmlFor="class-sport">Modalidade</FieldLabel><Input id="class-sport" required minLength={2} maxLength={40} value={sport} onChange={(event) => setSport(event.target.value)} className="mt-2 h-11 rounded-xl" placeholder="Futsal" /></Field><Field><FieldLabel htmlFor="new-class-teacher">Professor aprovado</FieldLabel><Select items={[{ value: 'none', label: 'Sem professor por enquanto' }, ...teacherItems.slice(1)]} value={newClassTeacher ?? 'none'} onValueChange={(value) => setNewClassTeacher(typeof value === 'string' && value !== 'none' ? value : undefined)}><SelectTrigger id="new-class-teacher" className="mt-2 h-11 w-full rounded-xl"><SelectValue placeholder="Sem professor por enquanto" /></SelectTrigger><SelectContent><SelectItem value="none">Sem professor por enquanto</SelectItem>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.nome}</SelectItem>)}</SelectContent></Select></Field><div className="grid grid-cols-2 gap-3"><Field><FieldLabel htmlFor="class-year">Ano</FieldLabel><Input id="class-year" type="number" min={2020} max={2100} required value={year} onChange={(event) => setYear(Number(event.target.value))} className="mt-2 h-11 rounded-xl" /></Field><Field><FieldLabel htmlFor="class-capacity">Capacidade</FieldLabel><Input id="class-capacity" type="number" min={1} max={99} required value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} className="mt-2 h-11 rounded-xl" /></Field></div></form>
+        <form id="create-class-form" className="space-y-4" onSubmit={(event) => void handleCreateClass(event)}><Field><FieldLabel htmlFor="class-name">Nome da turma</FieldLabel><Input id="class-name" required minLength={3} maxLength={80} value={className} onChange={(event) => setClassName(event.target.value)} className="mt-2 h-11 rounded-xl" placeholder="Futsal sub-14" /></Field><Field><FieldLabel htmlFor="class-sport">Modalidade</FieldLabel><Input id="class-sport" required minLength={2} maxLength={40} value={sport} onChange={(event) => setSport(event.target.value)} className="mt-2 h-11 rounded-xl" placeholder="Futsal" /></Field><Field><FieldLabel htmlFor="new-class-teacher">Professor aprovado</FieldLabel><Select items={[{ value: 'none', label: 'Sem professor por enquanto' }, ...teacherItems.slice(1)]} value={newClassTeacher ?? 'none'} onValueChange={(value) => setNewClassTeacher(typeof value === 'string' && value !== 'none' ? value : undefined)}><SelectTrigger id="new-class-teacher" className="mt-2 h-11 w-full rounded-xl"><SelectValue placeholder="Sem professor por enquanto" /></SelectTrigger><SelectContent><SelectItem value="none">Sem professor por enquanto</SelectItem>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.nome}</SelectItem>)}</SelectContent></Select></Field><div className="grid grid-cols-2 gap-3"><Field><FieldLabel htmlFor="class-year">Ano</FieldLabel><Input id="class-year" type="number" min={2020} max={2100} required value={year} onChange={(event) => setYear(Number(event.target.value))} className="mt-2 h-11 rounded-xl" /></Field><Field><FieldLabel htmlFor="class-capacity">Capacidade</FieldLabel><Input id="class-capacity" type="number" min={1} max={500} required value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} className="mt-2 h-11 rounded-xl" /></Field></div></form>
         <DialogFooter><Button variant="outline" onClick={() => setCreateClassOpen(false)}>Cancelar</Button><Button type="submit" form="create-class-form" disabled={classBusy}>{classBusy ? 'Salvando…' : 'Criar turma'}</Button></DialogFooter>
       </DialogContent>
     </Dialog>

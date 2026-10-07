@@ -111,7 +111,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [birthDate, setBirthDate] = useState('')
-  const [documentType, setDocumentType] = useState<'cpf' | 'rg' | 'outro'>('cpf')
+  const [documentType, setDocumentType] = useState<'cpf' | 'rg' | 'outro' | ''>('')
   const [documentNumber, setDocumentNumber] = useState('')
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotLoading, setForgotLoading] = useState(false)
@@ -256,8 +256,8 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
         ...(provider === 'email' ? { senha: password } : {}),
         tipo: 'aluno',
         data_nascimento: birthDate,
-        documento_tipo: documentType,
-        documento_numero: documentNumber,
+        documento_tipo: documentType || undefined,
+        documento_numero: documentType ? documentNumber : undefined,
         ...(inviteCode ? { codigo_convite: inviteCode } : {}),
       })
       setGoogleToken(null)
@@ -548,7 +548,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
           <div className="row g-3">
             <div className="col-5">
               <label htmlFor="document-type" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>
-                Documento <span aria-hidden="true" className="text-danger">*</span>
+                Documento <span aria-hidden="true" className="text-muted">(opcional)</span>
               </label>
               <select
                 id="document-type"
@@ -556,10 +556,11 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
                 value={documentType}
                 onChange={(event) => {
                   const v = event.target.value
-                  if (v === 'cpf' || v === 'rg' || v === 'outro') setDocumentType(v)
+                  if (v === 'cpf' || v === 'rg' || v === 'outro' || v === '') setDocumentType(v)
                 }}
                 style={{ height: 51, borderRadius: 14 }}
               >
+                <option value="">Não informar</option>
                 <option value="cpf">CPF</option>
                 <option value="rg">RG</option>
                 <option value="outro">Outro</option>
@@ -567,23 +568,24 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
             </div>
             <div className="col-7">
               <label htmlFor="document-number" className="form-label fw-semibold mb-1" style={{ fontSize: 14 }}>
-                Número <span aria-hidden="true" className="text-danger">*</span>
+                Número {documentType ? <span aria-hidden="true" className="text-danger">*</span> : <span aria-hidden="true" className="text-muted">(opcional)</span>}
               </label>
               <input
                 id="document-number"
                 type="text"
-                required
-                minLength={5}
+                required={Boolean(documentType)}
+                disabled={!documentType}
+                minLength={documentType ? 5 : undefined}
                 maxLength={40}
                 autoComplete="off"
                 value={documentNumber}
                 onChange={(event) => setDocumentNumber(event.target.value)}
-                placeholder="Somente número ou letras"
+                placeholder={documentType ? "Somente número ou letras" : "Escolha um tipo para informar"}
                 className="form-control"
                 style={{ height: 51, borderRadius: 14 }}
               />
               <div className="form-text mt-1 ps-1 text-ge-muted" style={{ fontSize: 12 }}>
-                Não envie fotos. O documento fica protegido.
+                Opcional. Se informado, o documento fica protegido — nunca é exibido por completo.
               </div>
             </div>
           </div>

@@ -30,6 +30,10 @@ export const teacherApi = {
       body: JSON.stringify({ nome, pontos }),
     }),
 
+  // ---- Edição da turma pelo professor ----
+  updateClass: (turmaId: string, payload: { nome?: string; modalidade?: string; capacidade?: number }) =>
+    request<{ id: string; changed: boolean }>(`/api/professor/classes/${encodeURIComponent(turmaId)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
   // ---- Agenda de aulas ----
   schedule: (dias = 7) => request<TeacherScheduleResponse>(`/api/professor/agenda?dias=${dias}`),
   overview: (semanas = 8) => request<TeacherOverview>(`/api/professor/visao-geral?semanas=${semanas}`),

@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, Pencil, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -65,6 +65,11 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const [revision, setRevision] = useState(0)
   const [classQuery, setClassQuery] = useState('')
   const [studentQuery, setStudentQuery] = useState('')
+  const [editingClass, setEditingClass] = useState<TeacherClass | null>(null)
+  const [editClassName, setEditClassName] = useState('')
+  const [editClassSport, setEditClassSport] = useState('')
+  const [editClassCapacity, setEditClassCapacity] = useState(20)
+  const [editClassBusy, setEditClassBusy] = useState(false)
 
   const { isImpersonating } = useImpersonation()
   const onInvalidate = useCallback(() => setRevision((value) => value + 1), [])
@@ -177,6 +182,28 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
     finally { setSending(false) }
   }
 
+  const openEditClass = (classItem: TeacherClass) => {
+    setEditingClass(classItem)
+    setEditClassName(classItem.nome)
+    setEditClassSport(classItem.modalidade ?? '')
+    setEditClassCapacity(classItem.capacidade || 20)
+  }
+
+  const saveClassEdit = async () => {
+    if (!editingClass || editClassBusy) return
+    const nome = editClassName.trim()
+    const modalidade = editClassSport.trim()
+    if (nome.length < 3 || modalidade.length < 2) return
+    setEditClassBusy(true)
+    try {
+      await teacherApi.updateClass(editingClass.id, { nome, modalidade, capacidade: editClassCapacity })
+      setNotice(`Turma ${nome} atualizada.`)
+      setEditingClass(null)
+      setRevision((value) => value + 1)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar a turma.') }
+    finally { setEditClassBusy(false) }
+  }
+
   const saveAward = useCallback(async (event: FormEvent) => {
     event.preventDefault()
     if (!awardTarget || !awardName.trim() || awardPoints < 1) return
@@ -282,6 +309,13 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">Alunos vinculados</p>
+                    <div className="mb-2 mt-1 flex justify-end">
+                      {!isImpersonating && (
+                        <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => openEditClass(classItem)} aria-label={`Editar turma ${classItem.nome}`}>
+                          <Pencil className="size-4" /> Editar
+                        </Button>
+                      )}
+                    </div>
                     {(studentsByClass.get(classItem.id) ?? []).length === 0 ? (
                       <p className="py-5 text-sm text-muted-foreground">Ainda não há alunos nesta turma.</p>
                     ) : (
@@ -409,6 +443,38 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingClass)} onOpenChange={(open) => { if (!open && !editClassBusy) setEditingClass(null) }}>
+        <DialogContent className="rounded-3xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Editar turma</DialogTitle>
+            <DialogDescription>
+              Ajuste o nome, a modalidade ou a capacidade de {editingClass?.nome ?? ''}. Os alunos vinculados são mantidos.
+            </DialogDescription>
+          </DialogHeader>
+          <form id="edit-class-form" className="space-y-4">
+            <Field>
+              <FieldLabel htmlFor="edit-class-name">Nome da turma</FieldLabel>
+              <Input id="edit-class-name" required minLength={3} maxLength={80} value={editClassName} onChange={(event) => setEditClassName(event.target.value)} className="mt-2 h-11 rounded-xl" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-class-sport">Modalidade</FieldLabel>
+              <Input id="edit-class-sport" required minLength={2} maxLength={40} value={editClassSport} onChange={(event) => setEditClassSport(event.target.value)} className="mt-2 h-11 rounded-xl" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-class-capacity">Capacidade de alunos</FieldLabel>
+              <Input id="edit-class-capacity" type="number" min={Math.max(1, editingClass?.total_alunos ?? 1)} max={500} required value={editClassCapacity} onChange={(event) => setEditClassCapacity(Number(event.target.value))} className="mt-2 h-11 rounded-xl" />
+              <p className="mt-1 text-xs text-muted-foreground">Não pode ser menor que o número de alunos já vinculados ({editingClass?.total_alunos ?? 0}).</p>
+            </Field>
+          </form>
+          <DialogFooter>
+            <Button variant="outline" disabled={editClassBusy} onClick={() => setEditingClass(null)}>Cancelar</Button>
+            <Button form="edit-class-form" type="submit" disabled={editClassBusy || editClassName.trim().length < 3 || editClassSport.trim().length < 2} onClick={() => void saveClassEdit()}>
+              {editClassBusy ? 'Salvando…' : 'Salvar alterações'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

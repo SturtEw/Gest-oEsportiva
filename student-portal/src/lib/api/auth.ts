@@ -40,8 +40,8 @@ export interface RegisterInput {
   /** Cadastro público existe apenas para aluno; professor entra por convite. */
   tipo: 'aluno'
   data_nascimento?: string
-  documento_tipo: 'cpf' | 'rg' | 'outro'
-  documento_numero: string
+  documento_tipo?: 'cpf' | 'rg' | 'outro'
+  documento_numero?: string
   /** Optional teacher invite: the new student enters that class directly. */
   codigo_convite?: string
 }
@@ -63,8 +63,8 @@ export interface TeacherRegisterInput {
   credential?: string
   nome: string
   senha?: string
-  documento_tipo: 'cpf' | 'rg' | 'outro'
-  documento_numero: string
+  documento_tipo?: 'cpf' | 'rg' | 'outro'
+  documento_numero?: string
   formacao_academica: string
   area_atuacao: string
 }

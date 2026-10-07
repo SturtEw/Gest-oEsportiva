@@ -135,8 +135,8 @@ class TeacherInviteRegisterInput(BaseModel):
     credential: str | None = Field(default=None, max_length=10000)
     nome: str = Field(min_length=3, max_length=120)
     senha: str | None = Field(default=None, min_length=10, max_length=72)
-    documento_tipo: Literal["cpf", "rg", "outro"]
-    documento_numero: str = Field(min_length=5, max_length=40)
+    documento_tipo: Literal["cpf", "rg", "outro"] | None = None
+    documento_numero: str | None = Field(default=None, max_length=40)
     formacao_academica: str = Field(min_length=2, max_length=160)
     area_atuacao: str = Field(min_length=2, max_length=160)
 
@@ -147,7 +147,9 @@ class TeacherInviteRegisterInput(BaseModel):
 
     @field_validator("documento_numero")
     @classmethod
-    def normalize_document(cls, value: str) -> str:
+    def normalize_document(cls, value: str | None) -> str | None:
+        if not value or not value.strip():
+            return None
         normalized = re.sub(r"[^0-9A-Za-z]", "", value).upper()
         if len(normalized) < 5:
             raise ValueError("Informe um documento válido")
@@ -180,8 +182,13 @@ async def register_teacher(payload: TeacherInviteRegisterInput, response: Respon
 
     if await db.users.find_one({"email": email}, {"_id": 0, "id": 1}):
         raise HTTPException(status_code=409, detail="Este e-mail já possui uma conta. Entre pela tela de login.")
-    digest = _document_digest(payload.documento_numero)
-    if await db.users.find_one({"documento_hash": digest}, {"_id": 0, "id": 1}):
+    has_document = bool(payload.documento_tipo and payload.documento_numero)
+    if payload.documento_tipo and not payload.documento_numero:
+        raise HTTPException(status_code=400, detail="Informe o número do documento ou deixe o campo vazio")
+    if payload.documento_numero and not payload.documento_tipo:
+        raise HTTPException(status_code=400, detail="Informe o tipo do documento ou deixe o campo vazio")
+    digest = _document_digest(payload.documento_numero) if has_document else None
+    if digest and await db.users.find_one({"documento_hash": digest}, {"_id": 0, "id": 1}):
         raise HTTPException(status_code=409, detail="Este documento já está vinculado a outra conta.")
 
     user_id = str(uuid.uuid4())
@@ -198,9 +205,9 @@ async def register_teacher(payload: TeacherInviteRegisterInput, response: Respon
         "tipo": "professor",
         "aluno_id": None,
         "data_nascimento": None,
-        "documento_tipo": payload.documento_tipo,
+        "documento_tipo": payload.documento_tipo if has_document else None,
         "documento_hash": digest,
-        "documento_final": payload.documento_numero[-4:],
+        "documento_final": payload.documento_numero[-4:] if has_document else None,
         "formacao_academica": payload.formacao_academica,
         "area_atuacao": payload.area_atuacao,
         "motivo_reprovacao": None,
