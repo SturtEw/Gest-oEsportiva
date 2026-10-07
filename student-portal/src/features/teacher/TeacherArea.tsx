@@ -70,7 +70,10 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
 
   useEffect(() => {
     let active = true
-    setLoading(true)
+    // Only the first load shows skeletons; later revisions (realtime invalidation,
+    // award points, refresh button) revalidate in place — full-skeleton swaps were
+    // the "screen flash" reported after giving points or on every reconnect.
+    setLoading((wasLoading) => wasLoading || (classes.length === 0 && students.length === 0))
     Promise.all([api.teacherDashboard(), api.teacherStudents()])
       .then(([dashboard, roster]) => { if (active) { setClasses(dashboard.classes); setStudents(roster.students) } })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar suas turmas.') })
@@ -86,6 +89,17 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
       .catch(() => undefined)
     return () => { active = false }
   }, [revision])
+
+  // The open conversation reloads silently on revision bumps (e.g. the student
+  // sent a new question) instead of flashing to an empty/loading state.
+  useEffect(() => {
+    if (!activeStudent) return
+    let active = true
+    api.teacherQuestions(activeStudent.id)
+      .then((items) => { if (active) setMessages(items) })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [activeStudent, revision])
 
   useEffect(() => {
     if (!activeStudent) { setMessages([]); return }

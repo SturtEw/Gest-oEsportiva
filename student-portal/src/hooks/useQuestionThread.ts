@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import type { PublicMessage } from '@/lib/types'
 
@@ -7,20 +7,28 @@ export function useQuestionThread(alunoId?: string) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
+  const previousAlunoId = useRef<string | undefined>(undefined)
 
   const refresh = useCallback(() => setRevision((value) => value + 1), [])
 
   useEffect(() => {
     let alive = true
-    setMessages([])
-    setLoading(true)
+    // Clear only when the conversation's subject changes. On mere revision
+    // bumps (realtime invalidation after a message is sent) keep the current
+    // messages on screen and revalidate silently — wiping to an empty list
+    // flashed the whole dialog every time a message went through.
+    if (previousAlunoId.current !== alunoId) {
+      previousAlunoId.current = alunoId
+      setMessages([])
+      setLoading(true)
+    }
     setError(null)
     if (!alunoId) {
       setLoading(false)
       return
     }
     api.questions(alunoId)
-      .then((items) => { if (alive) setMessages(items.map((item) => ({ ...item, localStatus: 'sent' }))) })
+      .then((items) => { if (alive) setMessages(items.map((item) => ({ ...item, localStatus: 'sent' as const }))) })
       .catch((cause: unknown) => { if (alive) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar as dúvidas.') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }

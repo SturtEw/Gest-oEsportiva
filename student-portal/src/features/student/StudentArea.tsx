@@ -74,12 +74,20 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
 
   const refresh = useCallback(() => { portalRefreshRef.current(); questionsRefreshRef.current() }, [])
   const onInvalidate = useCallback((event: { section: string }) => {
-    if (event.section === 'questions' || event.section === 'portal') questionsRefreshRef.current()
+    // Each invalidation touches only the section it belongs to. The blanket
+    // portalRefreshRef.current() call that used to run for every event made
+    // the whole student area flash (full skeleton) on every action — award
+    // points, ranking toggle, message sent, etc. The portal hook already
+    // keeps stale data (stale-while-revalidate), but remounting the section
+    // tree on every refresh was the visible flicker users reported.
+    if (event.section === 'questions') questionsRefreshRef.current()
     // A teacher's decision on a join request reaches the student as "enrollment".
-    if (event.section === 'enrollment' || event.section === 'portal') setEnrollmentRevision((value) => value + 1)
-    if (event.section === 'activities' || event.section === 'portal') setActivitiesRevision((value) => value + 1)
-    if (event.section === 'individual_workouts' || event.section === 'portal') setWorkoutsRevision((value) => value + 1)
-    portalRefreshRef.current()
+    if (event.section === 'enrollment') setEnrollmentRevision((value) => value + 1)
+    if (event.section === 'activities') setActivitiesRevision((value) => value + 1)
+    if (event.section === 'individual_workouts') setWorkoutsRevision((value) => value + 1)
+    // Portal data changes (award given, ranking toggle...) refresh silently:
+    // the hook keeps the current snapshot on screen while fetching.
+    if (event.section === 'portal') portalRefreshRef.current()
   }, [])
   const connection = useRealtimeSync({ audience: 'student', alunoId: studentId, enabled: !isImpersonating, onInvalidate })
   const goTo = useCallback((section: PortalSection) => { setActiveSection(section); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }, [])
