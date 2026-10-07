@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api, type AccountInfo } from '@/lib/api'
 import { initials } from '@/lib/formatters'
+import { prepareAvatarImage } from './imageResize'
+import { AvatarCropDialog } from './AvatarCropDialog'
 import { AVATAR_CATEGORIES, avatarUrl } from './avatars'
 
 type DangerAction = 'desativar' | 'excluir' | null
@@ -42,6 +44,10 @@ export function AccountManagement({ sessionUser, onAccountChanged, onSignedOut }
   const [pickerOpen, setPickerOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState(AVATAR_CATEGORIES[0].id)
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropBusy, setCropBusy] = useState(false)
+  const [cropError, setCropError] = useState<string | null>(null)
+  const pendingFile = useRef<File | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
 
   // Password
@@ -96,22 +102,45 @@ export function AccountManagement({ sessionUser, onAccountChanged, onSignedOut }
     finally { setAvatarBusy(false) }
   }
 
-  const uploadPhoto = async (file: File) => {
-    if (file.size > 512 * 1024) { setError('A foto deve ter no máximo 512 KB.'); return }
+  /** Any file size is accepted: the canvas shrinks it below the server cap. */
+  const pickFile = (file: File | null) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Escolha uma imagem PNG, JPEG ou WEBP.'); return }
+    if (file.type === 'image/gif') { setError('GIFs animados não são suportados; escolha uma foto estática.'); return }
+    if (file.size > 25 * 1024 * 1024) { setError('Imagem muito grande (máximo 25 MB).'); return }
+    pendingFile.current = file
+    setCropError(null)
+    setCropOpen(true)
+  }
+
+  /** Fast path: center-crop square with automatic quality reduction. */
+  const uploadAuto = async () => {
+    const file = pendingFile.current
+    if (!file) return
     setAvatarBusy(true)
     setError(null)
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'))
-        reader.readAsDataURL(file)
-      })
+      const prepared = await prepareAvatarImage(file)
+      const result = await api.uploadAvatar(prepared.dataUrl)
+      setConta(result.conta)
+      setNotice('Foto de perfil atualizada.')
+      setCropOpen(false)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível enviar a foto.') }
+    finally { setAvatarBusy(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  const uploadAdjusted = async (dataUrl: string) => {
+    setCropBusy(true)
+    setCropError(null)
+    try {
       const result = await api.uploadAvatar(dataUrl)
       setConta(result.conta)
       setNotice('Foto de perfil atualizada.')
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível enviar a foto.') }
-    finally { setAvatarBusy(false); if (fileRef.current) fileRef.current.value = '' }
+      setCropOpen(false)
+      pendingFile.current = null
+      if (fileRef.current) fileRef.current.value = ''
+    } catch (cause) { setCropError(cause instanceof Error ? cause.message : 'Não foi possível enviar a foto.') }
+    finally { setCropBusy(false) }
   }
 
   const removePhoto = async () => {
@@ -205,10 +234,10 @@ export function AccountManagement({ sessionUser, onAccountChanged, onSignedOut }
                 <Button variant="ghost" className="rounded-xl text-red-700" disabled={avatarBusy} onClick={() => void removePhoto()}>Remover</Button>
               )}
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-                onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadPhoto(file) }} />
+                onChange={(event) => pickFile(event.target.files?.[0] ?? null)} />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">PNG, JPEG ou WEBP até 512 KB. Avatares pré-definidos ficam prontos na galeria.</p>
+          <p className="text-xs text-muted-foreground">Qualquer tamanho de foto é aceito: ela é reduzida automaticamente para um quadrado de 256px (abaixo de 512 KB). Se preferir, ajuste zoom e posição manualmente antes de salvar.</p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
@@ -298,6 +327,17 @@ export function AccountManagement({ sessionUser, onAccountChanged, onSignedOut }
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Recorte manual da foto ── */}
+      <AvatarCropDialog
+        open={cropOpen}
+        file={pendingFile.current}
+        busy={cropBusy || avatarBusy}
+        error={cropError}
+        onOpenChange={(open) => { if (!open) { setCropOpen(false); pendingFile.current = null } }}
+        onConfirm={(dataUrl) => void uploadAdjusted(dataUrl)}
+        onAuto={() => void uploadAuto()}
+      />
 
       {/* ── Galeria de avatares ── */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
