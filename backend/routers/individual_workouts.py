@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from lib.dates import now_utc, today_iso
 from lib.db import db
+from lib.notifications import notify_student
 from lib.portal_access import get_authorized_aluno, require_assigned_professor
 from lib.realtime import publish_user_event
 from lib.security import get_current_user
@@ -246,6 +247,14 @@ async def create_plan(payload: PlanCreate, user: User = Depends(get_current_user
     await db.individual_plan.insert_one(document)
     for session in sessions:
         await db.individual_sessions.insert_one(session)
+
+    # Notificação in-app: "O Professor [Nome] prescreveu um novo treino individual para você."
+    await notify_student(
+        student.id,
+        titulo="Novo treino individual",
+        mensagem=f"O Professor {user.nome} prescreveu um novo treino individual para você: {payload.titulo}.",
+        link="meu-treino",
+    )
 
     await publish_user_event(student.id, SECTION)
 

@@ -121,7 +121,7 @@ function AppContent({ session }: { session: Session }) {
         <>
           <ImpersonationBanner />
           {readOnlyNotice}
-          <TeacherArea key={target?.id ?? user.id} name={viewUser.nome} onLogout={logout} />
+          <TeacherArea key={target?.id ?? user.id} userId={viewUser.id} name={viewUser.nome} onLogout={logout} />
         </>
       )
     }

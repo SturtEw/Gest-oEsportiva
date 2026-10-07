@@ -214,7 +214,13 @@ class Aluno(BaseModel):
 
     nome: str
 
+    # Turma principal (legado): mantida como "a primeira" para compatibilidade
+    # com ranking, presencas e telas antigas. Novo código deve preferir turmas_ids.
     turma_id: Optional[str] = None
+
+    # Multi-enrollment: todas as turmas do aluno (many-to-many com turmas).
+    # Mantido em sincronia com turma_id: turma_id == turmas_ids[0] quando existe.
+    turmas_ids: list[str] = Field(default_factory=list)
 
     data_nascimento: Optional[str] = None  # YYYY-MM-DD
 
@@ -241,6 +247,115 @@ class AlunoCreate(BaseModel):
     responsavel_email: Optional[EmailStr] = None
 
     responsavel_telefone: Optional[str] = None
+
+
+# ---------- Multi-turmas / matrículas ----------
+
+class EnrollmentInput(BaseModel):
+    """Teacher sets a student's class list (the first one is the primary turma_id)."""
+
+    turmas_ids: list[str] = Field(min_length=1, max_length=20)
+
+
+class AlunoEnrollments(BaseModel):
+    """Wire model: a student and all classes they belong to."""
+
+    id: str
+
+    nome: str
+
+    turma_id: Optional[str] = None
+
+    turmas_ids: list[str] = Field(default_factory=list)
+
+    turmas: list["StudentClassSummary"] = Field(default_factory=list)
+
+
+# ---------- Fórum de turma (chat estilo WhatsApp) ----------
+
+class ForumMessage(BaseModel):
+    """A chat message inside a class forum. The document stored in Mongo is this
+    plus `turma_id`. History pagination uses `criado_em` (descending) — the
+    frontend opens the chat with limit=50 and pages up for older messages."""
+
+    id: str = Field(default_factory=novo_id)
+
+    turma_id: str
+
+    autor_id: str  # user id (professor or aluno user), not the Aluno doc id
+
+    autor_nome: str
+
+    autor_tipo: str  # 'professor' | 'aluno'
+
+    autor_avatar: Optional[str] = None  # url da foto de perfil
+
+    texto: str = Field(min_length=1, max_length=2000)
+
+    criado_em: datetime = Field(default_factory=now_utc)
+
+
+class ForumMessageOut(BaseModel):
+    """Wire shape for a chat message (what the frontend renders)."""
+
+    id: str
+
+    autor_id: str
+
+    autor_nome: str
+
+    autor_tipo: str
+
+    autor_avatar: Optional[str] = None
+
+    texto: str
+
+    criado_em: datetime
+
+
+class ForumMessageCreate(BaseModel):
+
+    texto: str = Field(min_length=1, max_length=2000)
+
+
+# ---------- Notificações in-app ----------
+
+class Notificacao(BaseModel):
+    """In-app notification for a aluno user. `destinatario_id` is the *user* id
+    (the account that owns the bell), so guardians and the student see separate
+    bells. `aluno_id` is the underlying student doc, kept for admin queries."""
+
+    id: str = Field(default_factory=novo_id)
+
+    destinatario_id: str  # user id
+
+    aluno_id: Optional[str] = None
+
+    titulo: str
+
+    mensagem: str
+
+    lida: bool = False
+
+    # Where to navigate when tapped (e.g. /aluno/atividades).
+    link: Optional[str] = None
+
+    criado_em: datetime = Field(default_factory=now_utc)
+
+
+class NotificacaoOut(BaseModel):
+
+    id: str
+
+    titulo: str
+
+    mensagem: str
+
+    lida: bool
+
+    link: Optional[str] = None
+
+    criado_em: datetime
 
 
 # ---------- Agenda de aulas ----------

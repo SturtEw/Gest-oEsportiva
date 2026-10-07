@@ -36,6 +36,8 @@ def db(monkeypatch):
     monkeypatch.setattr(router, "db", fake)
     monkeypatch.setattr(router, "publish_user_event", record)
     monkeypatch.setattr("lib.portal_access.db", fake)
+    monkeypatch.setattr("lib.notifications.db", fake)
+    monkeypatch.setattr("lib.notifications.publish_event", record)
     fake.events = events
     return fake
 

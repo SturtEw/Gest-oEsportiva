@@ -86,6 +86,54 @@ async def student_portal(aluno_id: str | None = None, user: User = Depends(get_c
     return await build_student_payload(student)
 
 
+@router.get("/me/classes")
+
+async def my_classes(user: User = Depends(get_current_user_with_impersonation)):
+    """Multi-enrollment: todas as turmas do aluno (ou do filho selecionado via ?aluno_id)."""
+    if user.tipo == "aluno":
+        aluno_id = user.aluno_id
+
+        if not aluno_id:
+            raise HTTPException(status_code=403, detail="Esta conta não está vinculada a um cadastro de aluno")
+
+    elif user.tipo == "responsavel":
+        raise HTTPException(status_code=422, detail="Escolha um aluno vinculado")
+
+    else:
+        raise HTTPException(status_code=403, detail="Acesso restrito à área do aluno")
+
+    student = await get_authorized_aluno(user, aluno_id)
+
+    ids = list(student.turmas_ids or [])
+
+    if student.turma_id and student.turma_id not in ids:
+        ids.insert(0, student.turma_id)  # legado
+
+    cursor = db.turmas.find(
+        {"id": {"$in": ids}},
+        {"_id": 0, "id": 1, "nome": 1, "modalidade": 1, "ano": 1, "professor_id": 1},
+    ).sort("nome", 1)
+
+    documents = [item async for item in cursor]
+
+    professor_ids = {item["professor_id"] for item in documents if item.get("professor_id")}
+
+    professors = {
+        item["id"]: item.get("nome")
+        async for item in db.users.find({"id": {"$in": sorted(professor_ids)}}, {"_id": 0, "id": 1, "nome": 1})
+    }
+
+    turmas = [
+        {
+            **item,
+            "professor_nome": professors.get(item.get("professor_id")),
+        }
+        for item in documents
+    ]
+
+    return {"turmas": turmas, "turma_id": student.turma_id}
+
+
 @router.patch("/me/ranking-preference")
 
 async def update_ranking_preference(payload: RankingPreferenceUpdate, user: User = Depends(get_current_user_with_impersonation)):

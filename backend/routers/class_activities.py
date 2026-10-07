@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from lib.dates import now_utc
 from lib.db import db
+from lib.notifications import notify_student
 from lib.impersonation import get_current_user_with_impersonation
 from lib.portal_access import get_authorized_aluno
 from lib.realtime import publish_class_event, publish_user_event
@@ -337,6 +338,18 @@ async def create_activity(payload: ActivityCreate, user: User = Depends(get_curr
         "atualizado_em": now,
     }
     await db.atividades.insert_one(document)
+
+    # Gatilho (b) treino de turma: a atividade nova é publicada para a turma;
+    # cada aluno recebe a notificação in-app nomeando o professor autor.
+    roster = await _class_students(payload.turma_id)
+    for aluno_id in roster:
+        await notify_student(
+            aluno_id,
+            titulo="Nova atividade da turma",
+            mensagem=f"O Professor {user.nome} adicionou você na atividade {payload.titulo}.",
+            link="atividades",
+        )
+
     await _notify(document, user.id)
     return await _teacher_detail(document, turma)
 
@@ -396,6 +409,16 @@ async def add_participants(atividade_id: str, payload: ParticipantsAdd, user: Us
         if result.matched_count == 0:
             raise HTTPException(status_code=409, detail="A lista de participantes mudou agora há pouco. Recarregue e tente de novo.")
         atividade["participantes_ids"] = updated
+        professor_name = user.nome
+        for aluno_id in updated:
+            if aluno_id not in current:
+                # Notificação in-app: "O Professor [Nome] adicionou você na atividade [Título]"
+                await notify_student(
+                    aluno_id,
+                    titulo="Nova atividade",
+                    mensagem=f"O Professor {professor_name} adicionou você na atividade {atividade['titulo']}.",
+                    link="atividades",
+                )
         await _notify(atividade, user.id)
     return await _teacher_detail(atividade, turma)
 

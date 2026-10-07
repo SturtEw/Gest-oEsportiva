@@ -1,16 +1,17 @@
 import { Suspense, useCallback, useRef, useState } from 'react'
-import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, RefreshCw, Settings, Users, X, Trophy } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, MessagesSquare, RefreshCw, Settings, Users, X, Trophy } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
+import { NotificationBell } from '@/components/NotificationBell'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { HomeDashboard } from '@/features/home/HomeDashboard'
 import {
   AchievementSection, AnnouncementsSection, AssessmentSection, AttendanceSection, ClassSummary, EnrollmentHome,
-  QuestionThread, RecordsSection, StudentActivitiesSection, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection,
+  QuestionThread, RecordsSection, StudentActivitiesSection, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection, ForumView,
 } from './sections'
 import { useQuestionThread } from '@/hooks/useQuestionThread'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
@@ -32,6 +33,7 @@ const sections: { id: PortalSection; label: string; short: string; icon: typeof 
   { id: 'registros', label: 'Ocorrências e justificativas', short: 'Registros', icon: BookOpen },
   { id: 'comunicados', label: 'Comunicados', short: 'Comunicados', icon: Bell },
   { id: 'duvidas', label: 'Dúvidas com o professor', short: 'Dúvidas', icon: MessageCircle },
+  { id: 'forum', label: 'Fórum da turma', short: 'Fórum', icon: MessagesSquare },
   { id: 'conta', label: 'Minha conta', short: 'Conta', icon: Settings },
 ]
 
@@ -62,6 +64,8 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
   const [enrollmentRevision, setEnrollmentRevision] = useState(0)
   const [activitiesRevision, setActivitiesRevision] = useState(0)
   const [workoutsRevision, setWorkoutsRevision] = useState(0)
+  const [forumRevision, setForumRevision] = useState(0)
+  const [notificationsRevision, setNotificationsRevision] = useState(0)
   const { isImpersonating } = useImpersonation()
   const portal = useStudentPortal(studentId)
   const questions = useQuestionThread(studentId)
@@ -85,6 +89,10 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     if (event.section === 'enrollment') setEnrollmentRevision((value) => value + 1)
     if (event.section === 'activities') setActivitiesRevision((value) => value + 1)
     if (event.section === 'individual_workouts') setWorkoutsRevision((value) => value + 1)
+    // Fórum: novas mensagens chegam sem recarregar (o ChatRoom busca o delta).
+    if (event.section === 'forum') setForumRevision((value) => value + 1)
+    // Sino de notificações: nova notificação in-app.
+    if (event.section === 'notifications') setNotificationsRevision((value) => value + 1)
     // Portal data changes (award given, ranking toggle...) refresh silently:
     // the hook keeps the current snapshot on screen while fetching.
     if (event.section === 'portal') portalRefreshRef.current()
@@ -112,7 +120,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     }
     switch (activeSection) {
       case 'inicio': return <HomeDashboard snapshot={snapshot} onOpenSection={goTo} />
-      case 'turma': return <ClassSummary turma={snapshot.turma} professorNome={snapshot.professor_nome} />
+      case 'turma': return <ClassSummary turma={snapshot.turma} professorNome={snapshot.professor_nome} alunoId={studentId} />
       case 'presencas': return <AttendanceSection attendance={snapshot.presencas} />
       case 'avaliacoes': return <AssessmentSection assessments={snapshot.avaliacoes} />
       case 'conquistas': return <AchievementSection alunoId={studentId} studentName={snapshot.aluno.nome} awards={snapshot.conquistas} participates={snapshot.aluno.participa_ranking} canEditPreference={canEditRanking && !isImpersonating} forcedPrivate={forcedPrivate} setForcedPrivate={setForcedPrivate} onPreferenceChange={setStudentRankingPreference} />
@@ -122,6 +130,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       case 'registros': return <RecordsSection incidents={snapshot.ocorrencias} justifications={snapshot.justificativas} />
       case 'comunicados': return <AnnouncementsSection announcements={snapshot.comunicados} />
       case 'duvidas': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">As dúvidas estão disponíveis apenas para consulta nesta visualização.</p> : <QuestionThread alunoId={studentId} turma={snapshot.turma} professorNome={snapshot.professor_nome} sessionUser={user} messages={questions.messages} loading={questions.loading} error={questions.error} onSend={questions.send} onRetry={questions.retry} onRefresh={questions.refresh} />
+      case 'forum': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">O fórum está disponível apenas para consulta nesta visualização.</p> : <ForumView myUserId={user.id} myRole="aluno" live={connection.status === 'live'} revision={forumRevision} />
       case 'conta': return <AccountManagement sessionUser={{ nome: user.nome, email: user.email, tipo: user.tipo, tem_senha: user.tem_senha }} onAccountChanged={refresh} onSignedOut={onLogout} />
     }
   }
@@ -138,7 +147,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       <main id="main-content" className="min-w-0 flex-1 pb-24 lg:pb-8">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/95 backdrop-blur-sm"><div className="page-container flex min-h-[68px] items-center justify-between gap-3 py-3">
           <div className="flex min-w-0 items-center gap-3"><Button variant="ghost" size="icon" aria-label="Abrir navegação" className="lg:hidden" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</Button><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-[0.15em] text-[#66806D]">{currentSection.label}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{user.tipo === 'responsavel' ? `Acompanhando ${snapshot?.aluno.nome ?? 'aluno'}` : 'Seu espaço de aprendizado e esporte'}</p></div></div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3"><ConnectionStatus status={connection.status} message={connection.message} lastUpdatedAt={connection.lastUpdatedAt} />{user.tipo === 'responsavel' && children.length > 0 && <Select items={children.map((child) => ({ value: child.id, label: child.nome }))} value={selectedChildId} onValueChange={(value) => { if (typeof value === 'string') onChildChange(value) }}><SelectTrigger className="h-10 max-w-[180px] rounded-xl border-[#D8E1D5] bg-white text-xs sm:max-w-[240px] sm:text-sm" aria-label="Escolher aluno vinculado"><SelectValue placeholder="Escolha o aluno" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.nome}</SelectItem>)}</SelectContent></Select>}<Button variant="ghost" size="icon" aria-label="Atualizar meus dados" className="hidden sm:inline-flex" onClick={refresh}><RefreshCw aria-hidden="true" /></Button><Button variant="ghost" size="icon" aria-label="Sair da conta" className="lg:hidden" onClick={onLogout}><LogOut aria-hidden="true" /></Button></div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3"><ConnectionStatus status={connection.status} message={connection.message} lastUpdatedAt={connection.lastUpdatedAt} /><NotificationBell revision={notificationsRevision} />{user.tipo === 'responsavel' && children.length > 0 && <Select items={children.map((child) => ({ value: child.id, label: child.nome }))} value={selectedChildId} onValueChange={(value) => { if (typeof value === 'string') onChildChange(value) }}><SelectTrigger className="h-10 max-w-[180px] rounded-xl border-[#D8E1D5] bg-white text-xs sm:max-w-[240px] sm:text-sm" aria-label="Escolher aluno vinculado"><SelectValue placeholder="Escolha o aluno" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.nome}</SelectItem>)}</SelectContent></Select>}<Button variant="ghost" size="icon" aria-label="Atualizar meus dados" className="hidden sm:inline-flex" onClick={refresh}><RefreshCw aria-hidden="true" /></Button><Button variant="ghost" size="icon" aria-label="Sair da conta" className="lg:hidden" onClick={onLogout}><LogOut aria-hidden="true" /></Button></div>
         </div></header>
         {mobileMenuOpen && <nav aria-label="Navegação principal" className="absolute left-0 right-0 top-[68px] z-30 border-b border-border bg-white p-3 shadow-xl lg:hidden"><div className="grid grid-cols-2 gap-1 sm:grid-cols-4">{sections.map((section) => { const Icon = section.icon; return <Button key={section.id} variant={activeSection === section.id ? 'secondary' : 'ghost'} onClick={() => goTo(section.id)} onPointerDown={() => prefetchSection(section.id)} onFocus={() => prefetchSection(section.id)} className="min-h-12 justify-start gap-2 rounded-xl px-3 text-left text-xs"><Icon aria-hidden="true" className="size-4 shrink-0" />{section.label}</Button> })}</div></nav>}
         <div className="page-container py-6 sm:py-8">{user.tipo === 'responsavel' && children.length > 1 && <div className="mb-5 flex items-start gap-2 rounded-xl border border-[#DDE8D4] bg-[#F6FAF2] px-4 py-3 text-xs leading-5 text-[#48614C]"><Users aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Você vê somente os registros do aluno selecionado. O responsável não pode alterar a participação no ranking.</div>}

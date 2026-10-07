@@ -17,6 +17,7 @@ const loaders = {
   registros: () => import('@/features/records/RecordsSection'),
   comunicados: () => import('@/features/announcements/AnnouncementsSection'),
   duvidas: () => import('@/features/questions/QuestionThread'),
+  forum: () => import('@/features/forum/ForumView'),
   enrollment: () => import('@/features/enrollment/EnrollmentHome'),
 } satisfies Partial<Record<PortalSection | 'enrollment', () => Promise<unknown>>>
 
@@ -30,6 +31,7 @@ export const TreinamentosSection = lazy(() => loaders.treinamentos().then((modul
 export const RecordsSection = lazy(() => loaders.registros().then((module) => ({ default: module.RecordsSection })))
 export const AnnouncementsSection = lazy(() => loaders.comunicados().then((module) => ({ default: module.AnnouncementsSection })))
 export const QuestionThread = lazy(() => loaders.duvidas().then((module) => ({ default: module.QuestionThread })))
+export const ForumView = lazy(() => loaders.forum().then((module) => ({ default: module.ForumView })))
 export const EnrollmentHome = lazy(() => loaders.enrollment().then((module) => ({ default: module.EnrollmentHome })))
 
 /** Starts a section's chunk (menu hover/focus). Errors surface when it renders. */

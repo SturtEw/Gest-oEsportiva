@@ -36,6 +36,7 @@ export function toSortableTime(value?: string | null): number {
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' })
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+const timeFormatter = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short' })
 const decimalFormatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
 export function formatDate(value?: string | null): string {
@@ -46,6 +47,12 @@ export function formatDate(value?: string | null): string {
 export function formatDateTime(value?: string | null): string {
   const parsed = parseApiDate(value)
   return parsed ? dateTimeFormatter.format(parsed) : 'Não informado'
+}
+
+/** Chat bubble timestamp: HH:MM (o dia completo fica no separador de mensagens). */
+export function formatTime(value?: string | null): string {
+  const parsed = parseApiDate(value)
+  return parsed ? timeFormatter.format(parsed) : ''
 }
 
 export function formatBimester(value?: string | null): string {

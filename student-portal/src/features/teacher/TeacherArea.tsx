@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, Pencil, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,15 +18,15 @@ import { api, teacherApi } from '@/lib/api'
 import { GlobalSearchBar, type SearchTarget } from './search/GlobalSearchBar'
 import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { formatDateTime, firstName, initials } from '@/lib/formatters'
-import type { ActivitySummary, PublicMessage, TeacherClass } from '@/lib/types'
+import type { ActivitySummary, PublicMessage, RealtimeEvent, TeacherClass } from '@/lib/types'
 import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
-import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, TeacherWorkoutsView, prefetchTeacherView } from './sections'
+import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, ForumView, TeacherWorkoutsView, prefetchTeacherView } from './sections'
 import { AccountManagement } from '@/features/account/AccountManagement'
 
-type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'agenda' | 'conta'
+type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'forum' | 'agenda' | 'conta'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -39,13 +39,14 @@ const VIEWS: Record<View, ViewMeta> = {
   atividades: { label: 'Atividades', short: 'Atividades', icon: Flag, eyebrow: 'Torneios e eventos', description: 'Crie quantas atividades quiser para suas turmas. Os alunos marcam interesse; você monta os times, o chaveamento e registra os placares.' },
   workouts: { label: 'Treino individual', short: 'Treino 1:1', icon: Dumbbell, eyebrow: 'Prescrição individual', description: 'Prescreva rotinas de treino para um aluno por vez — de um modelo pronto ou do zero — e acompanhe o que ele já concluiu.' },
   prescribed: { label: 'Treinos prescritos', short: 'Prescritos', icon: ClipboardList, eyebrow: 'Todos os treinos', description: 'Todos os treinos individuais que você passou para os seus alunos, com o progresso de cada um.' },
+  forum: { label: 'Fórum da turma', short: 'Fórum', icon: MessagesSquare, eyebrow: 'Comunidade', description: 'Converse com cada turma em um grupo próprio, em tempo real. Os alunos veem o mesmo grupo.' },
   convites: { label: 'Convites e pedidos', short: 'Convites', icon: UserPlus, eyebrow: 'Matrículas', description: 'Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.' },
   alunos: { label: 'Alunos', short: 'Alunos', icon: Trophy, eyebrow: 'Seus alunos', description: 'Todos os alunos das suas turmas em um só lugar.' },
   agenda: { label: 'Agenda', short: 'Agenda', icon: CalendarDays, eyebrow: 'Próximos 14 dias', description: 'As aulas marcadas para as próximas duas semanas. Para agendar uma aula, use o Painel.' },
   conta: { label: 'Minha conta', short: 'Conta', icon: UserRound, eyebrow: 'Sua conta', description: 'Dados pessoais, avatar, senha e opções da sua conta.' },
 }
 
-export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => void }) {
+export function TeacherArea({ userId, name, onLogout }: { userId: string; name: string; onLogout: () => void }) {
   const [view, setView] = useState<View>('dashboard')
   const [classes, setClasses] = useState<TeacherClass[]>([])
   const [students, setStudents] = useState<Student[]>([])
@@ -63,6 +64,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const [savingAward, setSavingAward] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
+  const [forumRevision, setForumRevision] = useState(0)
   const [classQuery, setClassQuery] = useState('')
   const [studentQuery, setStudentQuery] = useState('')
   const [editingClass, setEditingClass] = useState<TeacherClass | null>(null)
@@ -72,10 +74,15 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const [editClassBusy, setEditClassBusy] = useState(false)
 
   const { isImpersonating } = useImpersonation()
-  const onInvalidate = useCallback(() => setRevision((value) => value + 1), [])
+  const refresh = useCallback(() => setRevision((value) => value + 1), [])
+  // WebSocket: bump geral + fórum (mensagens novas chegam sem recarregar).
+  const onInvalidate = useCallback((event: RealtimeEvent) => {
+    refresh()
+    if (event.section === 'forum') setForumRevision((value) => value + 1)
+  }, [refresh])
   const connection = useRealtimeSync({ audience: 'teacher', enabled: !isImpersonating, onInvalidate })
   // Approving a request changes the roster, so mutations bump the shared revision.
-  const enrollment = useTeacherEnrollment({ revision, onChanged: onInvalidate })
+  const enrollment = useTeacherEnrollment({ revision, onChanged: refresh })
 
   useEffect(() => {
     let active = true
@@ -149,6 +156,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
       item('atividades'),
       item('workouts'),
       item('prescribed'),
+  item('forum'),
       item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
       item('alunos'),
       item('agenda'),
@@ -397,6 +405,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
         {view === 'agenda' && <AgendaView revision={revision} />}
+
+        {view === 'forum' && <ForumView myUserId={userId} myRole="professor" live={connection.status === 'live'} revision={forumRevision} />}
 
         {view === 'conta' && <AccountManagement sessionUser={{ nome: name, tipo: 'professor' }} onAccountChanged={() => setRevision((value) => value + 1)} onSignedOut={onLogout} />}
         </Suspense>

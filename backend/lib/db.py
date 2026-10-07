@@ -748,6 +748,26 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    # Fórum de turma: histórico paginado por (turma_id, criado_em desc).
+    "forum_mensagens": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        IndexModel([("turma_id", ASCENDING), ("criado_em", DESCENDING)], name="turma_criado"),
+
+    ],
+
+    # Notificações in-app: sino do usuário (não lidas primeiro, mais novas em cima).
+    "notificacoes": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        IndexModel([("destinatario_id", ASCENDING), ("lida", ASCENDING), ("criado_em", DESCENDING)], name="dest_lida_data"),
+
+        IndexModel([("criado_em", ASCENDING)], name="criado_em", expireAfterSeconds=60 * 60 * 24 * 60),  # TTL 60 dias
+
+    ],
+
     "ia_conversas": [
 
         IndexModel([("id", ASCENDING)], name="id", unique=True),

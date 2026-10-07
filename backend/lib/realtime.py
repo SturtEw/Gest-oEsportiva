@@ -193,7 +193,11 @@ class RealtimeHub:
         if not turma_id:
             return
 
-        async for student in db.alunos.find({"turma_id": turma_id}, {"_id": 0, "id": 1}):
+        # Multi-enrollment: alunos podem pertencer a várias turmas (turmas_ids);
+        # o campo legado turma_id cobre cadastros antigos não migrados.
+        async for student in db.alunos.find(
+            {"$or": [{"turmas_ids": turma_id}, {"turma_id": turma_id}]}, {"_id": 0, "id": 1}
+        ):
             await self._invalidate(f"student:{student['id']}", section)
 
 
