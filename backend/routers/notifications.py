@@ -96,6 +96,16 @@ async def list_notifications(limit: int = Query(default=LIST_LIMIT, ge=1, le=100
     return {"notifications": [_out(item) for item in items], "unread": unread}
 
 
+@router.post("/read-all")
+async def mark_all_read(user: User = Depends(get_current_user)):
+    result = await db.notificacoes.update_many(
+        {"destinatario_id": user.id, "lida": False},
+        {"$set": {"lida": True}},
+    )
+    await publish_event(user.id, "notifications")
+    return {"modified": result.modified_count}
+
+
 @router.post("/{notification_id}/read")
 async def mark_read(notification_id: str, user: User = Depends(get_current_user)):
     result = await db.notificacoes.update_one(
@@ -106,13 +116,3 @@ async def mark_read(notification_id: str, user: User = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Notificação não encontrada")
     await publish_event(user.id, "notifications")
     return {"id": notification_id, "lida": True}
-
-
-@router.post("/read-all")
-async def mark_all_read(user: User = Depends(get_current_user)):
-    result = await db.notificacoes.update_many(
-        {"destinatario_id": user.id, "lida": False},
-        {"$set": {"lida": True}},
-    )
-    await publish_event(user.id, "notifications")
-    return {"modified": result.modified_count}

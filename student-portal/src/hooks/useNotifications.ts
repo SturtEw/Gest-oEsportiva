@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import type { AppNotification } from '@/lib/types'
 
@@ -13,7 +13,8 @@ export function useNotifications({ revision }: { revision: number }) {
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const loadedRef = useRef(false)
+  // Silences the effect re-run when revision didn't actually change.
+  const lastRevisionRef = useRef<number | null>(null)
 
   const refresh = useCallback(() => {
     api.list()
@@ -23,10 +24,14 @@ export function useNotifications({ revision }: { revision: number }) {
         setError(null)
       })
       .catch((cause: unknown) => { setError(cause instanceof Error ? cause.message : 'Não foi possível carregar as notificações.') })
-      .finally(() => { loadedRef.current = true; setLoading(false) })
+      .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { refresh() }, [refresh, revision])
+  useEffect(() => {
+    if (lastRevisionRef.current === revision) return
+    lastRevisionRef.current = revision
+    refresh()
+  }, [revision, refresh])
 
   const markRead = useCallback(async (id: string) => {
     // Optimistic: o sino responde na hora; o servidor confirma em segundo plano.
@@ -39,9 +44,7 @@ export function useNotifications({ revision }: { revision: number }) {
     setUnread(0)
     setNotifications((current) => current.map((item) => ({ ...item, lida: true })))
     try { await api.markAllRead() } catch { refresh() }
-  }, [refresh])
+    }, [refresh])
 
-  return { notifications, unread, loading, error, refresh, markRead, markAllRead }
-}
-
-import { useRef } from 'react'
+    return { notifications, unread, loading, error, refresh, markRead, markAllRead }
+  }

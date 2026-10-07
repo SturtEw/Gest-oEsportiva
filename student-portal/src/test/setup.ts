@@ -75,6 +75,9 @@ global.WebSocket = MockWebSocket as unknown as typeof WebSocket
 // Mock scrollTo
 window.scrollTo = vi.fn()
 
+// jsdom não implementa scrollIntoView; o ChatRoom chama após montar o chat.
+Element.prototype.scrollIntoView = vi.fn()
+
 // Suppress console.error for known warnings in tests
 const originalError = console.error
 beforeAll(() => {
