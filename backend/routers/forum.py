@@ -142,9 +142,12 @@ async def list_messages(
     elif before is not None:
         query["criado_em"] = {"$lt": before}
 
+    # Carga inicial/delta: pega as últimas N (sort DESC) e devolve em ordem
+    # cronológica ASC (mais antiga em cima, mais nova embaixo — padrão WhatsApp).
+    # Histórico (before=): pega as N anteriores (sort DESC) e devolve ASC também.
     cursor = (
         db.forum_mensagens.find(query, {"_id": 0})
-        .sort("criado_em", -1 if before is not None else 1)
+        .sort("criado_em", -1)
         .limit(limit)
     )
     items = [item async for item in cursor]
