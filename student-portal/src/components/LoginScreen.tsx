@@ -303,7 +303,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
           <p className="mt-4 text-center mb-0 text-ge-muted" style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 420 }}>
             {accountState.message ?? (
               isPending
-                ? `O cadastro de ${accountState.name} será analisado pela escola. Você receberá uma atualização quando houver uma decisão.`
+                ? `O cadastro de ${accountState.name} será analisado pelo administrador. Você receberá uma atualização quando houver uma decisão.`
                 : isRejected
                   ? `Olá, ${accountState.name}. ${accountState.message ?? 'Entre em contato com a escola para saber como prosseguir.'}`
                   : 'Seu acesso está liberado.'
@@ -356,7 +356,7 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
       </div>
 
       <div className="rounded-3 border px-6 py-4" style={{ borderColor: '#E1E9DB', backgroundColor: '#F7FAF4', color: '#536A58', fontSize: 12, lineHeight: 1.6 }}>
-        Professores recebem o acesso por convite da escola. Alunos podem criar a própria conta.
+        Professores recebem o acesso por convite do administrador. Alunos podem criar a própria conta.
       </div>
 
       {(localError || error) && (
@@ -695,10 +695,10 @@ export interface AuthHeroCopy {
 }
 
 const DEFAULT_HERO: AuthHeroCopy = {
-  badge: 'Seu espaço de aprendizado',
+  badge: 'Seu espaço de evolução',
   title: 'Cada treino conta uma história.',
-  description: 'Acompanhe seu desenvolvimento, veja os registros da escola e converse com seu professor.',
-  footer: 'Uma experiência segura para alunos e famílias.',
+  description: 'Acompanhe seu desenvolvimento, veja os registros de treinos e converse com seu professor.',
+  footer: 'Uma experiência segura para alunos e famílias. Oferecimento EwSystems',
 }
 
 export function AuthShell({ children, hero = DEFAULT_HERO }: { children: ReactNode; hero?: AuthHeroCopy }) {
@@ -726,7 +726,7 @@ export function AuthShell({ children, hero = DEFAULT_HERO }: { children: ReactNo
                   GESTÃO ESPORTIVA
                 </span>
                 <span className="d-block text-white-50 text-uppercase" style={{ fontSize: 10, letterSpacing: '0.2em' }}>
-                  escolar
+                  treinos e atividades de esportes
                 </span>
               </div>
             </div>
