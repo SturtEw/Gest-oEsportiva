@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, ArrowRight, BookOpen, Check, CircleAlert, Eye, GraduationCap, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Users, X } from 'lucide-react'
+import { Activity, ArrowRight, BookOpen, Check, CircleAlert, Eye, GraduationCap, KeyRound, Plus, RefreshCw, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +52,8 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
   const [year, setYear] = useState(new Date().getFullYear())
   const [capacity, setCapacity] = useState(20)
   const [classBusy, setClassBusy] = useState(false)
+  const [deleteClassTarget, setDeleteClassTarget] = useState<AdminClass | null>(null)
+  const [deleteClassBusy, setDeleteClassBusy] = useState(false)
   const [inspectionId, setInspectionId] = useState<string | null>(null)
   const [inspection, setInspection] = useState<StudentPortalSnapshot | null>(null)
   const [inspectionLoading, setInspectionLoading] = useState(false)
@@ -208,6 +210,18 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
     finally { setClassBusy(false) }
   }
 
+  const handleDeleteClass = async () => {
+    if (!deleteClassTarget) return
+    setDeleteClassBusy(true)
+    try {
+      const result = await api.deleteClass(deleteClassTarget.id)
+      setNotice(`Turma ${result.nome} excluída.${result.students_unlinked > 0 ? ` ${result.students_unlinked} aluno(s) ficaram sem turma.` : ''}`)
+      setDeleteClassTarget(null)
+      refresh()
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível excluir a turma.') }
+    finally { setDeleteClassBusy(false) }
+  }
+
   return <AppShell
     nav={[
       { id: 'teachers', label: 'Professores', icon: GraduationCap, badge: summary.professores_pendentes || undefined },
@@ -263,7 +277,7 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
       {tab === 'classes' && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-xl font-bold">Turmas cadastradas</h2><p className="mt-1 text-sm text-muted-foreground">Atribua professores aprovados para liberar as ferramentas docentes.</p></div><Button className="rounded-xl" onClick={() => setCreateClassOpen(true)}><Plus aria-hidden="true" />Nova turma</Button></div>
-          {classes.length === 0 ? <EmptyState icon={BookOpen} title="Nenhuma turma cadastrada" body="Cadastre uma turma para começar a vincular alunos e professores." /> : <div className="grid gap-3 lg:grid-cols-2">{classes.map((item) => <Card key={item.id} className="border-0 shadow-none ring-1 ring-border"><CardContent className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><h3 className="font-display font-bold">{item.nome}</h3><p className="mt-1 text-xs text-muted-foreground">{item.modalidade} · {item.ano} · {item.alunos_count}/{item.capacidade} alunos</p></div><Select items={teacherItems} value={item.professor_id ?? 'none'} onValueChange={(value) => { void api.setClassTeacher(item.id, typeof value === 'string' && value !== 'none' ? value : undefined).then(() => { setNotice('Professor da turma atualizado.'); refresh() }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o professor.')) }}><SelectTrigger className="h-10 w-full rounded-xl bg-white sm:w-64" aria-label={`Professor da turma ${item.nome}`}><SelectValue placeholder="Escolha professor" /></SelectTrigger><SelectContent><SelectItem value="none">Sem professor vinculado</SelectItem>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.nome}</SelectItem>)}</SelectContent></Select></CardContent></Card>)}</div>}
+          {classes.length === 0 ? <EmptyState icon={BookOpen} title="Nenhuma turma cadastrada" body="Cadastre uma turma para começar a vincular alunos e professores." /> : <div className="grid gap-3 lg:grid-cols-2">{classes.map((item) => <Card key={item.id} className="border-0 shadow-none ring-1 ring-border"><CardContent className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div><h3 className="font-display font-bold">{item.nome}</h3><p className="mt-1 text-xs text-muted-foreground">{item.modalidade} · {item.ano} · {item.alunos_count}/{item.capacidade} alunos</p></div><div className="flex items-center gap-2"><Select items={teacherItems} value={item.professor_id ?? 'none'} onValueChange={(value) => { void api.setClassTeacher(item.id, typeof value === 'string' && value !== 'none' ? value : undefined).then(() => { setNotice('Professor da turma atualizado.'); refresh() }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o professor.')) }}><SelectTrigger className="h-10 w-full rounded-xl bg-white sm:w-56" aria-label={`Professor da turma ${item.nome}`}><SelectValue placeholder="Escolha professor" /></SelectTrigger><SelectContent><SelectItem value="none">Sem professor vinculado</SelectItem>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.nome}</SelectItem>)}</SelectContent></Select><Button variant="outline" size="icon" className="shrink-0 rounded-xl border-red-200 text-red-800 hover:bg-red-50" aria-label={`Excluir turma ${item.nome}`} disabled={classBusy} onClick={() => setDeleteClassTarget(item)}><Trash2 aria-hidden="true" /></Button></div></CardContent></Card>)}</div>}
           {teachers.length === 0 && <Alert className="border-[#E9E1CC] bg-[#FFFDF7]"><GraduationCap aria-hidden="true" /><AlertDescription>Nenhum professor aprovado está disponível para vinculação.</AlertDescription></Alert>}
         </div>
       )}
@@ -363,6 +377,13 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
       <DialogContent className="rounded-3xl sm:max-w-md"><DialogHeader><DialogTitle className="font-display text-xl">Vincular aluno à turma</DialogTitle><DialogDescription>Confirme a matrícula de {selectedStudent?.nome ?? ''}.</DialogDescription></DialogHeader>
         {classes.length ? <Field><FieldLabel htmlFor="class-select">Turma disponível</FieldLabel><Select items={classes.map((classItem) => ({ value: classItem.id, label: `${classItem.nome} · ${classItem.alunos_count}/${classItem.capacidade}` }))} value={selectedClassId} onValueChange={(value) => setSelectedClassId(typeof value === 'string' ? value : undefined)}><SelectTrigger id="class-select" className="mt-2 h-11 w-full rounded-xl"><SelectValue placeholder="Escolha uma turma" /></SelectTrigger><SelectContent>{classes.map((classItem) => <SelectItem key={classItem.id} value={classItem.id} disabled={classItem.alunos_count >= classItem.capacidade}>{classItem.nome} · {classItem.alunos_count}/{classItem.capacidade}</SelectItem>)}</SelectContent></Select><FieldDescription>Turmas lotadas não podem receber novas matrículas.</FieldDescription></Field> : <Alert><AlertDescription>Nenhuma turma cadastrada.</AlertDescription></Alert>}
         <DialogFooter><Button variant="outline" onClick={() => setSelectedStudent(null)}>Cancelar</Button><Button disabled={!selectedClassId || assignmentBusy} onClick={() => void handleAssignment()}>{assignmentBusy ? 'Vinculando…' : 'Confirmar vínculo'}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={Boolean(deleteClassTarget)} onOpenChange={(open) => { if (!open && !deleteClassBusy) setDeleteClassTarget(null) }}>
+      <DialogContent className="rounded-3xl sm:max-w-md"><DialogHeader><DialogTitle className="font-display text-xl">Excluir turma?</DialogTitle><DialogDescription>{deleteClassTarget ? `${deleteClassTarget.nome} · ${deleteClassTarget.modalidade} · ${deleteClassTarget.alunos_count} aluno(s) vinculado(s)` : ''}</DialogDescription></DialogHeader>
+        <p className="text-sm leading-6 text-muted-foreground">A turma será removida permanentemente. Os alunos vinculados ficarão sem turma (suas contas são mantidas) e o professor deixará de ter acesso às ferramentas desta turma. Esta ação não pode ser desfeita.</p>
+        <DialogFooter><Button variant="outline" disabled={deleteClassBusy} onClick={() => setDeleteClassTarget(null)}>Cancelar</Button><Button variant="destructive" disabled={deleteClassBusy} onClick={() => void handleDeleteClass()}>{deleteClassBusy ? 'Excluindo…' : 'Excluir turma'}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
 

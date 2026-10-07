@@ -394,6 +394,44 @@ async def assign_student_to_class(aluno_id: str, payload: AssignClassInput, user
     return {"id": aluno_id, "nome": student["nome"], "turma_id": payload.turma_id, "turma_nome": turma["nome"]}
 
 
+@router.delete("/classes/{turma_id}", status_code=200)
+
+async def delete_class(turma_id: str, user: User = Depends(get_current_user)):
+    """Exclusão de turma: exclusivamente do administrador raiz.
+
+    Remove o documento da turma e desvincula (não exclui) os alunos e o
+    professor que estavam associados, mantendo as contas intactas.
+    """
+    _require_root(user)
+
+    turma = await db.turmas.find_one({"id": turma_id}, {"_id": 0, "id": 1, "nome": 1, "alunos_ids": 1, "professor_id": 1})
+
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+
+    member_ids = list(turma.get("alunos_ids", []))
+
+    if member_ids:
+        await db.alunos.update_many({"id": {"$in": member_ids}}, {"$set": {"turma_id": None}})
+
+    await db.turmas.delete_one({"id": turma_id})
+
+    await _audit(user, "class_deleted", turma_id, {"nome": turma["nome"], "students_unlinked": len(member_ids)})
+
+    # Post-transaction events (outside transaction to avoid failures)
+    await publish_admin_event("classes")
+
+    await publish_admin_event("unassigned_students")
+
+    if turma.get("professor_id"):
+        await publish_user_event(turma["professor_id"], "classes")
+
+    for member_id in member_ids:
+        await publish_event(member_id, "portal")
+
+    return {"id": turma_id, "nome": turma["nome"], "status": "excluida", "students_unlinked": len(member_ids)}
+
+
 @router.get("/teacher-workspace")
 
 async def inspect_teacher_workspace(user: User = Depends(get_current_user)):

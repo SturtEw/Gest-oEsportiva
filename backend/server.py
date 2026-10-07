@@ -36,6 +36,7 @@ from models.models import User
 from routers.admin import router as admin_router
 from routers.auth import _password_reset_email_html, children_router, router as auth_router
 from routers.class_activities import router as class_activities_router
+from routers.individual_workouts import router as individual_workouts_router
 from routers.class_enrollment import router as class_enrollment_router
 from routers.professor import router as professor_router
 from routers.student import router as student_router
@@ -379,6 +380,9 @@ app.include_router(class_enrollment_router)
 
 
 app.include_router(class_activities_router)
+
+
+app.include_router(individual_workouts_router)
 
 
 app.include_router(teacher_invites_admin_router)

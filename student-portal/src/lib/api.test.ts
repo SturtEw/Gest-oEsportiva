@@ -30,6 +30,18 @@ describe('api object', () => {
     expect(paths[1]).toMatch(/\/api\/professor\/students\/aluno-1\/questions$/)
   })
 
+  it('sends DELETE to the class endpoint when deleting a class', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ id: 'c-1', nome: 'Futsal', status: 'excluida', students_unlinked: 0 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await api.deleteClass('c-1')
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toMatch(/\/api\/admin\/classes\/c-1$/)
+    expect((init as RequestInit).method).toBe('DELETE')
+    expect(result.status).toBe('excluida')
+  })
+
   it('requests google-config once per page and retries after a failure', async () => {
     resetGoogleConfigCache()
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ client_id: 'abc', csrf_token: 'raw.sig' }))

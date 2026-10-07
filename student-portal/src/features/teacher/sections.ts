@@ -7,10 +7,12 @@ import { lazy } from 'react'
 const loaders = {
   atividades: () => import('@/features/activities/teacher/TeacherActivitiesView'),
   convites: () => import('./enrollment/TeacherEnrollmentPanel'),
+  workouts: () => import('@/features/teacher/workouts/TeacherWorkoutsView'),
 }
 
 export const TeacherActivitiesView = lazy(() => loaders.atividades().then((module) => ({ default: module.TeacherActivitiesView })))
 export const TeacherEnrollmentPanel = lazy(() => loaders.convites().then((module) => ({ default: module.TeacherEnrollmentPanel })))
+export const TeacherWorkoutsView = lazy(() => loaders.workouts().then((module) => ({ default: module.TeacherWorkoutsView })))
 
 /** Starts a view's chunk from the menu (hover/focus/press). */
 export function prefetchTeacherView(view: string) {

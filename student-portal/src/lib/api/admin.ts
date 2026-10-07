@@ -25,6 +25,7 @@ export const adminApi = {
   setClassTeacher: (classId: string, teacherId?: string) => request(`/api/admin/classes/${encodeURIComponent(classId)}/teacher${teacherId ? `?teacher_id=${encodeURIComponent(teacherId)}` : ''}`, { method: 'PATCH' }),
   teacherWorkspace: () => request<{ classes: Array<{ id: string; nome: string; modalidade: string; ano: number; professor_nome: string; alunos: Array<{ id: string; nome: string }> }> }>('/api/admin/teacher-workspace'),
   createClass: (payload: { nome: string; modalidade: string; ano: number; capacidade: number; professor_id?: string }) => request('/api/admin/classes', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteClass: (classId: string) => request<{ id: string; nome: string; status: 'excluida'; students_unlinked: number }>(`/api/admin/classes/${encodeURIComponent(classId)}`, { method: 'DELETE' }),
   assignClass: (alunoId: string, turmaId: string) => request(`/api/admin/students/${encodeURIComponent(alunoId)}/class`, { method: 'PATCH', body: JSON.stringify({ turma_id: turmaId }) }),
   inspectStudent: (alunoId: string) => request<{ read_only: true; inspected_by: string; student_portal: StudentPortalSnapshot }>(`/api/admin/students/${encodeURIComponent(alunoId)}/portal`),
   // Teacher invitation links (`enrollmentApi.teacherInvites` is the class-code list).
