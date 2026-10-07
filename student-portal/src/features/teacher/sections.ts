@@ -8,11 +8,13 @@ const loaders = {
   atividades: () => import('@/features/activities/teacher/TeacherActivitiesView'),
   convites: () => import('./enrollment/TeacherEnrollmentPanel'),
   workouts: () => import('@/features/teacher/workouts/TeacherWorkoutsView'),
+  prescribed: () => import('@/features/teacher/workouts/TeacherPrescribedWorkouts'),
 }
 
 export const TeacherActivitiesView = lazy(() => loaders.atividades().then((module) => ({ default: module.TeacherActivitiesView })))
 export const TeacherEnrollmentPanel = lazy(() => loaders.convites().then((module) => ({ default: module.TeacherEnrollmentPanel })))
 export const TeacherWorkoutsView = lazy(() => loaders.workouts().then((module) => ({ default: module.TeacherWorkoutsView })))
+export const TeacherPrescribedWorkouts = lazy(() => loaders.prescribed().then((module) => ({ default: module.TeacherPrescribedWorkouts })))
 
 /** Starts a view's chunk from the menu (hover/focus/press). */
 export function prefetchTeacherView(view: string) {

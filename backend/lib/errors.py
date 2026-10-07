@@ -395,6 +395,16 @@ def register_middlewares(app: FastAPI) -> None:
                 if token:
                     response.headers["X-CSRF-Token"] = token
 
+        # Recarga de página em cross-origin: o JS não lê o cookie gesp_csrf e o
+        # token em memória morreu com o unload — a primeira mutação depois do
+        # refresh caía em 403. Espelhar o token vigente do cookie em TODA resposta
+        # (o /api/auth/me incluído) repõe o cache do client.ts sem custo adicional.
+        if "X-CSRF-Token" not in response.headers:
+            cookie_token = request.cookies.get("gesp_csrf")
+
+            if cookie_token:
+                response.headers["X-CSRF-Token"] = cookie_token
+
         response.headers["Content-Security-Policy"] = csp_header(nonce)
 
         response.headers["X-CSP-Nonce"] = nonce

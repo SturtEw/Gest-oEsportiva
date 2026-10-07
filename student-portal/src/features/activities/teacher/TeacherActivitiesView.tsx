@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CircleAlert, Flag, Lock, Plus, Trophy } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePollingRevision } from '@/hooks/usePollingRevision'
 import { useTeacherActivities } from '@/hooks/useTeacherActivities'
+import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { FORMAT_LABELS } from '@/lib/bracket'
 import type { ActivitySummary } from '@/lib/types'
 import { cn } from 'cn'
@@ -27,7 +28,12 @@ export function TeacherActivitiesView({ revision, live, readOnly, onNotice }: Pr
   const tick = usePollingRevision(!live)
   const state = useTeacherActivities({ revision: revision + tick })
   const [creating, setCreating] = useState(false)
+  const [query, setQuery] = useState('')
   const { classes, activities, selectedId, detail } = state
+  const visibleActivities = useMemo(
+    () => activities.filter((activity) => matchesQuery(activity.titulo, query) || matchesQuery(activity.turma_nome, query)),
+    [activities, query],
+  )
 
   if (state.loading && activities.length === 0 && classes.length === 0) {
     return (
@@ -71,14 +77,22 @@ export function TeacherActivitiesView({ revision, live, readOnly, onNotice }: Pr
             </Button>
           )}
         </div>
-        {activities.length === 0 ? (
+        {activities.length > 0 && <SearchInput value={query} onChange={setQuery} placeholder="Buscar atividade ou turma…" label="Filtrar atividades" />}
+        {visibleActivities.length === 0 ? (
+          activities.length > 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-8 text-center">
+              <p className="text-sm font-semibold">Nada corresponde a “{query.trim()}”</p>
+              <p className="mt-1 text-xs text-muted-foreground">Tente outro termo ou limpe a busca.</p>
+            </div>
+          ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-8 text-center">
             <p className="text-sm font-semibold">Comece pela primeira</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Um torneio relâmpago, uma gincana, um amistoso. Crie quantas quiser.</p>
           </div>
+          )
         ) : (
           <ul className="m-0! list-none space-y-2 p-0!">
-            {activities.map((activity) => (
+            {visibleActivities.map((activity) => (
               <li key={activity.id}>
                 <ActivityListItem activity={activity} selected={activity.id === selectedId} onSelect={() => state.select(activity.id)} />
               </li>

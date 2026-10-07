@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/formatters'
+import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { copyToClipboard, formatInviteCode, inviteLink } from '@/lib/invite-code'
 import type { ClassInvite, TeacherInviteClass } from '@/lib/types'
 import { cn } from 'cn'
@@ -27,6 +28,8 @@ interface Props {
 export function InviteCodesCard({ classes, onGenerate, onRevoke, readOnly }: Props) {
   const [generating, setGenerating] = useState<TeacherInviteClass | null>(null)
   const [revoking, setRevoking] = useState<TeacherInviteClass | null>(null)
+  const [query, setQuery] = useState('')
+  const visibleClasses = classes.filter((item) => matchesQuery(item.turma_nome, query) || matchesQuery(item.modalidade, query))
 
   return (
     <Card className="shadow-none ring-1 ring-border">
@@ -37,15 +40,18 @@ export function InviteCodesCard({ classes, onGenerate, onRevoke, readOnly }: Pro
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {classes.length > 0 && <SearchInput value={query} onChange={setQuery} placeholder="Buscar turma ou modalidade…" label="Filtrar turmas com código" className="mb-3" />}
         {classes.length === 0 ? (
           <div className="py-10 text-center">
             <Ticket aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
             <p className="mt-3 font-display font-bold">Nenhuma turma vinculada</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">A administração precisa vincular uma turma a você para gerar convites.</p>
           </div>
+        ) : visibleClasses.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border py-6 text-center text-sm text-muted-foreground">Nenhuma turma corresponde a “{query.trim()}”.</p>
         ) : (
           <ul className="grid gap-3 ps-0! mb-0!">
-            {classes.map((item) => (
+            {visibleClasses.map((item) => (
               <ClassInviteItem
                 key={item.turma_id}
                 item={item}

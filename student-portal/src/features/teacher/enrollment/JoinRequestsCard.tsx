@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { RequestStatusBadge } from '@/features/enrollment/RequestStatusBadge'
 import { firstName, formatDateTime, initials } from '@/lib/formatters'
 import type { JoinRequest } from '@/lib/types'
@@ -24,6 +25,9 @@ interface Props {
 export function JoinRequestsCard({ pending, history, pendingCount, onDecide, readOnly }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<JoinRequest | null>(null)
+  const [query, setQuery] = useState('')
+  const visiblePending = pending.filter((item) => matchesQuery(item.aluno_nome, query) || matchesQuery(item.turma_nome, query))
+  const visibleHistory = history.filter((item) => matchesQuery(item.aluno_nome, query) || matchesQuery(item.turma_nome, query))
 
   const decide = async (item: JoinRequest, aprovar: boolean, motivo?: string) => {
     setBusyId(item.id)
@@ -46,6 +50,7 @@ export function JoinRequestsCard({ pending, history, pendingCount, onDecide, rea
         <CardDescription className="leading-6">Alunos que pediram para entrar nas suas turmas. Aprovar coloca o aluno na turma na hora.</CardDescription>
       </CardHeader>
       <CardContent>
+        <SearchInput value={query} onChange={setQuery} placeholder="Buscar por aluno ou turma…" label="Filtrar solicitações" className="mb-3" />
         {/* flex-col explicitly: the primitive's data-horizontal variant does not match Base UI's data-orientation. */}
         <Tabs defaultValue="pendentes" className="flex-col">
           <TabsList className="h-9">
@@ -57,11 +62,11 @@ export function JoinRequestsCard({ pending, history, pendingCount, onDecide, rea
           </TabsList>
 
           <TabsContent value="pendentes">
-            {pending.length === 0 ? (
-              <EmptyQueue title="Nenhuma solicitação pendente" message="Quando um aluno pedir para entrar em uma turma sua, o pedido aparece aqui." />
+            {visiblePending.length === 0 ? (
+              <EmptyQueue title={query.trim() ? 'Nada corresponde à busca' : 'Nenhuma solicitação pendente'} message={query.trim() ? 'Tente outro nome ou limpe a busca.' : 'Quando um aluno pedir para entrar em uma turma sua, o pedido aparece aqui.'} />
             ) : (
               <ul className="divide-y divide-border/70 ps-0! mb-0!">
-                {pending.map((item) => (
+                {visiblePending.map((item) => (
                   <li key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground" aria-hidden="true">
                       {initials(item.aluno_nome)}
@@ -92,11 +97,11 @@ export function JoinRequestsCard({ pending, history, pendingCount, onDecide, rea
           </TabsContent>
 
           <TabsContent value="historico">
-            {history.length === 0 ? (
-              <EmptyQueue title="Nenhuma decisão ainda" message="Pedidos aprovados e recusados ficam registrados aqui." />
+            {visibleHistory.length === 0 ? (
+              <EmptyQueue title={query.trim() ? 'Nada corresponde à busca' : 'Nenhuma decisão ainda'} message={query.trim() ? 'Tente outro nome ou limpe a busca.' : 'Pedidos aprovados e recusados ficam registrados aqui.'} />
             ) : (
               <ul className="divide-y divide-border/70 ps-0! mb-0!">
-                {history.map((item) => (
+                {visibleHistory.map((item) => (
                   <li key={item.id} className="flex items-start justify-between gap-3 py-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{item.aluno_nome}</p>

@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarCheck2, CircleAlert, ClipboardList, Dumbbell, Plus, Trash2, Users } from 'lucide-react'
+import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,12 @@ export function TeacherWorkoutsView({ students, revision, readOnly, onNotice }: 
   const [editing, setEditing] = useState<PlanDraft | null>(null)
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [studentQuery, setStudentQuery] = useState('')
+
+  const visibleStudents = useMemo(
+    () => students.filter((student) => matchesQuery(student.nome, studentQuery)),
+    [students, studentQuery],
+  )
 
   const selectedStudent = useMemo(
     () => students.find((student) => student.id === selectedStudentId) ?? null,
@@ -116,8 +123,9 @@ export function TeacherWorkoutsView({ students, revision, readOnly, onNotice }: 
           <CardDescription>Escolha um aluno para prescrever e acompanhar a rotina individual dele.</CardDescription>
         </CardHeader>
         <CardContent>
+          <SearchInput value={studentQuery} onChange={setStudentQuery} placeholder="Buscar aluno por nome…" label="Filtrar alunos" className="mb-3" />
           <div className="flex flex-wrap gap-2">
-            {students.map((student) => {
+            {visibleStudents.map((student) => {
               const active = student.id === selectedStudentId
               return (
                 <button key={student.id} type="button" aria-pressed={active}

@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, Dumbbell, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,16 +16,17 @@ import { useImpersonation } from '@/hooks/useImpersonation'
 import { useTeacherEnrollment } from '@/hooks/useTeacherEnrollment'
 import { api, teacherApi } from '@/lib/api'
 import { GlobalSearchBar, type SearchTarget } from './search/GlobalSearchBar'
+import { SearchInput, matchesQuery } from '@/components/SearchInput'
 import { formatDateTime, firstName, initials } from '@/lib/formatters'
 import type { ActivitySummary, PublicMessage, TeacherClass } from '@/lib/types'
 import { TeacherDashboard } from './dashboard/TeacherDashboard'
 import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
-import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherWorkoutsView, prefetchTeacherView } from './sections'
+import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, TeacherWorkoutsView, prefetchTeacherView } from './sections'
 import { AccountManagement } from '@/features/account/AccountManagement'
 
-type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'convites' | 'alunos' | 'agenda' | 'conta'
+type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'agenda' | 'conta'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -37,6 +38,7 @@ const VIEWS: Record<View, ViewMeta> = {
   turmas: { label: 'Turmas', short: 'Turmas', icon: Users, eyebrow: 'Suas turmas', description: 'Os alunos de cada turma. Abra as dúvidas de um aluno ou registre uma conquista.' },
   atividades: { label: 'Atividades', short: 'Atividades', icon: Flag, eyebrow: 'Torneios e eventos', description: 'Crie quantas atividades quiser para suas turmas. Os alunos marcam interesse; você monta os times, o chaveamento e registra os placares.' },
   workouts: { label: 'Treino individual', short: 'Treino 1:1', icon: Dumbbell, eyebrow: 'Prescrição individual', description: 'Prescreva rotinas de treino para um aluno por vez — de um modelo pronto ou do zero — e acompanhe o que ele já concluiu.' },
+  prescribed: { label: 'Treinos prescritos', short: 'Prescritos', icon: ClipboardList, eyebrow: 'Todos os treinos', description: 'Todos os treinos individuais que você passou para os seus alunos, com o progresso de cada um.' },
   convites: { label: 'Convites e pedidos', short: 'Convites', icon: UserPlus, eyebrow: 'Matrículas', description: 'Gere códigos para os alunos entrarem direto nas suas turmas e responda aos pedidos de quem se cadastrou sem código.' },
   alunos: { label: 'Alunos', short: 'Alunos', icon: Trophy, eyebrow: 'Seus alunos', description: 'Todos os alunos das suas turmas em um só lugar.' },
   agenda: { label: 'Agenda', short: 'Agenda', icon: CalendarDays, eyebrow: 'Próximos 14 dias', description: 'As aulas marcadas para as próximas duas semanas. Para agendar uma aula, use o Painel.' },
@@ -61,6 +63,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
   const [savingAward, setSavingAward] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
+  const [classQuery, setClassQuery] = useState('')
+  const [studentQuery, setStudentQuery] = useState('')
 
   const { isImpersonating } = useImpersonation()
   const onInvalidate = useCallback(() => setRevision((value) => value + 1), [])
@@ -123,6 +127,15 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
     if (found) setActiveStudent(found)
   }
 
+  const filteredClasses = useMemo(
+    () => classes.filter((item) => matchesQuery(item.nome, classQuery) || matchesQuery(item.modalidade, classQuery)),
+    [classes, classQuery],
+  )
+  const filteredStudents = useMemo(
+    () => students.filter((item) => matchesQuery(item.nome, studentQuery)),
+    [students, studentQuery],
+  )
+
   const nav: NavItem[] = useMemo(() => {
     const item = (id: View, extra?: Partial<NavItem>): NavItem => ({ id, label: VIEWS[id].label, short: VIEWS[id].short, icon: VIEWS[id].icon, ...extra })
     return [
@@ -130,6 +143,7 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
       item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
       item('atividades'),
       item('workouts'),
+      item('prescribed'),
       item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
       item('alunos'),
       item('agenda'),
@@ -245,8 +259,13 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
               message="A administração precisa vincular uma turma para você acessar os alunos."
             />
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {classes.map((classItem) => (
+            <div className="space-y-4">
+              <SearchInput value={classQuery} onChange={setClassQuery} placeholder="Buscar turma ou modalidade…" label="Filtrar turmas" />
+              {filteredClasses.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Nenhuma turma corresponde a “{classQuery}”.</p>
+              ) : (
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {filteredClasses.map((classItem) => (
                 <Card key={classItem.id} className="ring-1 ring-border">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-3">
@@ -287,6 +306,8 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
                   </CardContent>
                 </Card>
               ))}
+                </div>
+              )}
             </div>
           )
         )}
@@ -297,8 +318,13 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
           ) : students.length === 0 ? (
             <EmptyState title="Nenhum aluno vinculado" message="Assim que a administração vincular alunos às suas turmas, eles aparecem aqui." />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {students.map((student) => {
+            <div className="space-y-4">
+              <SearchInput value={studentQuery} onChange={setStudentQuery} placeholder="Buscar aluno por nome…" label="Filtrar alunos" />
+              {filteredStudents.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">Nenhum aluno corresponde a “{studentQuery}”.</p>
+              ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredStudents.map((student) => {
                 const turma = classes.find((item) => item.id === student.turma_id)
                 return (
                   <Card key={student.id} className="ring-1 ring-border">
@@ -319,16 +345,20 @@ export function TeacherArea({ name, onLogout }: { name: string; onLogout: () => 
                         </Button>
                       </div>
                     </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )
-        )}
+                            </Card>
+                          )
+                        })}
+                        </div>
+                        )}
+                      </div>
+                    )
+                  )}
 
-        {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
+                  {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
 
         {view === 'workouts' && <TeacherWorkoutsView students={students} revision={revision} readOnly={isImpersonating} onNotice={setNotice} />}
+
+        {view === 'prescribed' && <TeacherPrescribedWorkouts revision={revision} />}
 
         {view === 'convites' && <TeacherEnrollmentPanel enrollment={enrollment} readOnly={isImpersonating} />}
 
