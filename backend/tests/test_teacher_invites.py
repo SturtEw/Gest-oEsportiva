@@ -75,6 +75,7 @@ async def test_admin_creates_invite_and_only_the_hash_is_stored(db):
     assert timedelta(days=2, hours=23) < stored["expira_em"] - stored["criado_em"] <= timedelta(days=3)
     # E-mail delivery failed (no provider in tests): the admin still gets the link.
     assert created["email_enviado"] is False
+    assert created["email_erro"]  # the real reason, not a generic failure
     assert db.admin_audit.documents[-1]["action"] == "teacher_invite_created"
 
 

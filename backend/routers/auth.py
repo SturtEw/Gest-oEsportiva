@@ -999,7 +999,7 @@ async def forgot_password(payload: ForgotPasswordInput):
         queue_doc["sent_at"] = now_utc()
 
     except Exception as exc:
-        logging.getLogger(__name__).warning("Password reset email sync send failed, queued for retry: %s", exc)
+        logging.getLogger(__name__).error('{"event": "password_reset_email_failed", "email": "%s", "error": "%s"}', email, str(exc)[:200])
 
         queue_doc["status"] = "failed"
 
@@ -1007,12 +1007,13 @@ async def forgot_password(payload: ForgotPasswordInput):
 
     await db.email_queue.insert_one(queue_doc)
 
-    # Immediately attempt to send the queued email (don't wait for background worker)
-    try:
-        from server import _email_worker_once
-        await _email_worker_once()
-    except Exception:
-        pass  # Background worker will retry
+    if queue_doc["status"] != "sent":
+        # The token is already saved — the background worker retries — but the
+        # frontend must NOT show a success screen for an email that never left.
+        raise HTTPException(
+            status_code=502,
+            detail="Não foi possível enviar o e-mail agora. Tente novamente em instantes.",
+        )
 
     await record_auth_attempt(f"reset:{email}", True)
 

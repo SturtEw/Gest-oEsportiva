@@ -75,17 +75,23 @@ def _invite_email_html(nome: str | None, url: str, validade_dias: int, turma_nom
 
 
 async def _send_invite_email(invite: dict, token: str, turma: dict | None, validade_dias: int) -> bool:
+    """Deliver the invite e-mail through the central service. Raises on failure.
+
+    The invite document is already persisted when this runs, so a failed e-mail
+    does NOT lose the link: the route returns the invite with `email_enviado`
+    false and an `email_erro` message — the admin copies the link instead. The
+    token is deliberately NOT queued for retry: the queue would store it in
+    plain text.
+    """
     try:
         await send_email(
             to=invite["email"],
             subject="Seu convite de professor — Gestão Esportiva Escolar",
             html=_invite_email_html(invite.get("nome"), invites.invite_url(token), validade_dias, turma.get("nome") if turma else None),
         )
-    except Exception as exc:  # noqa: BLE001 — e-mail is optional; the admin still has the link
-        # The token is deliberately NOT queued for retry: the queue would store it in
-        # plain text. The admin copies the link instead.
+    except Exception as exc:  # noqa: BLE001 — the admin still has the link
         logger.warning('{"event": "teacher_invite_email_failed", "invite_id": "%s", "error": "%s"}', invite["id"], str(exc)[:200])
-        return False
+        raise
     await db.professor_convites.update_one({"id": invite["id"]}, {"$set": {"email_enviado": True}})
     return True
 
@@ -111,12 +117,20 @@ async def create_teacher_invite(payload: TeacherInviteCreate, user: User = Depen
         validade_dias=payload.validade_dias, created_by=user.id,
     )
     turma = await invites.load_class(invite.get("turma_id"))
-    email_sent = await _send_invite_email(invite, token, turma, payload.validade_dias) if payload.enviar_email else False
+    email_sent = False
+    email_erro: str | None = None
+    if payload.enviar_email:
+        try:
+            email_sent = await _send_invite_email(invite, token, turma, payload.validade_dias)
+        except Exception as exc:
+            # The link exists either way — surface WHY the e-mail failed instead of
+            # a generic "não pôde ser encaminhado".
+            email_erro = str(exc) or "Falha no envio do e-mail"
     invite["email_enviado"] = email_sent
     await _audit(user, "teacher_invite_created", invite["id"], {"email": invite["email"], "turma_id": invite.get("turma_id"), "email_enviado": email_sent})
     await publish_admin_event("teacher_invites")
     # The token is returned this one time; afterwards only its hash exists.
-    return {"invite": invites.public_invite(invite, turma), "token": token, "path": f"{invites.INVITE_PATH}?token={token}", "url": invites.invite_url(token), "email_enviado": email_sent}
+    return {"invite": invites.public_invite(invite, turma), "token": token, "path": f"{invites.INVITE_PATH}?token={token}", "url": invites.invite_url(token), "email_enviado": email_sent, "email_erro": email_erro}
 
 
 @admin_router.delete("/{invite_id}")

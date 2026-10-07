@@ -1,17 +1,28 @@
-"""Real email sending via Emergent's managed Resend integration (replaces
-enviarEmailMock). The platform owns the provider account and the From address;
-we set the display name (EMAIL_FROM_NAME) and never touch provider keys.
+"""Centralized transactional email sending with provider selection:
 
+1. SMTP (preferred when configured) — reads SMTP_HOST, SMTP_PORT, SMTP_USER,
+   SMTP_PASS and EMAIL_FROM. Stdlib smtplib + asyncio.to_thread (no extra dep).
+2. Emergent managed Resend integration (fallback) — the platform-owned
+   provider used before this refactor.
+
+All failures raise EmailSendError with a short actionable reason, so HTTP
+handlers can return a 5xx and the frontend can show a real error instead of
+a fake success screen.
 """
 
+import asyncio
 import ipaddress
 import logging
 import os
 import re
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
-
 
 import httpx
 
@@ -19,24 +30,39 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-# Emergent managed email proxy — a CONSTANT, never read from env (survives deployment).
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+class EmailSendError(RuntimeError):
+    """An email could not be sent. Frontend-facing flows must surface this."""
 
 
-def _env_required(name: str) -> str:
-    """Read a required env var, or raise a clear error at send time.
-
-    Read lazily (not at import): dotenv runs in server.py's startup, so an import-time
-    lookup breaks `python -c "import server"` and any other entry point that has not
-    loaded the .env yet — with a bare KeyError that says nothing about where it came
-    from.
-    """
+def _env(name: str) -> str | None:
     value = os.environ.get(name)
-    if not value:
-        raise RuntimeError(
-            f"{name} não configurado. Preencha backend/.env e reinicie o backend."
-        )
-    return value
+    return value.strip() if value and value.strip() else None
+
+
+def smtp_config() -> dict | None:
+    """Complete SMTP settings, or None when SMTP is not configured.
+
+    HOST alone is enough (unauthenticated relay); USER requires PASS.
+    """
+    host = _env("SMTP_HOST")
+    if not host:
+        return None
+    try:
+        port = int(_env("SMTP_PORT") or 587)
+    except ValueError as exc:
+        raise EmailSendError("SMTP_PORT inválido — use uma porta numérica (587, 465 ou 25).") from exc
+    user, password = _env("SMTP_USER"), _env("SMTP_PASS")
+    if user and not password:
+        raise EmailSendError("SMTP_USER está definido mas SMTP_PASS não — configure ambos ou remova SMTP_USER.")
+    return {"host": host, "port": port, "user": user, "password": password}
+
+
+def _smtp_from() -> str:
+    return _env("EMAIL_FROM") or _env("SMTP_FROM") or _env("SMTP_USER") or ""
+
+
+def provider_name() -> str:
+    return "smtp" if smtp_config() else "emergent"
 
 
 # ---------- Guardrail gate (G2 + G3 structural checks — call on every send) ----------
@@ -150,38 +176,98 @@ def _assert_safe_email(subject: str, html: str) -> None:
 
 
 # ---------- Send (async, non-blocking) ----------
-async def send_email(*, to: str, subject: str, html: str) -> str | None:
-    """Send one transactional email; returns the provider id. Raises on failure —
-    callers decide whether a per-recipient failure fails the batch."""
-    _assert_safe_email(subject, html)
+def _smtp_send_sync(cfg: dict, from_addr: str, from_name: str, to: str, subject: str, html: str) -> None:
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = formataddr((from_name, from_addr))
+    message["To"] = to
+    message.attach(MIMEText(html, "html", "utf-8"))
 
-    payload = {"to": [to], "subject": subject, "html": html, "from_name": _env_required("EMAIL_FROM_NAME")}
+    if cfg["port"] == 465:
+        server: smtplib.SMTP = smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=30)
+    else:
+        server = smtplib.SMTP(cfg["host"], cfg["port"], timeout=30)
+    try:
+        server.ehlo()
+        if cfg["port"] != 465:
+            server.starttls(context=ssl.create_default_context())
+            server.ehlo()
+        if cfg["user"] and cfg["password"]:
+            server.login(cfg["user"], cfg["password"])
+        server.sendmail(from_addr, [to], message.as_string())
+    finally:
+        try:
+            server.quit()
+        except Exception:
+            pass
 
+
+async def _send_via_smtp(cfg: dict, to: str, subject: str, html: str) -> str | None:
+    from_name = _env("EMAIL_FROM_NAME") or "Gestão Esportiva Escolar"
+    from_addr = _smtp_from()
+    if not from_addr:
+        raise EmailSendError(
+            "SMTP configurado, mas sem remetente: defina EMAIL_FROM (ou SMTP_FROM/SMTP_USER) no ambiente."
+        )
+    # smtplib is blocking; run it off the event loop (Render single-worker setups).
+    try:
+        await asyncio.to_thread(_smtp_send_sync, cfg, from_addr, from_name, to, subject, html)
+    except smtplib.SMTPAuthenticationError as exc:
+        raise EmailSendError("SMTP recusou as credenciais (SMTP_USER/SMTP_PASS).") from exc
+    except (smtplib.SMTPException, OSError, ssl.SSLError) as exc:
+        logger.error('{"event": "email_send_failed", "provider": "smtp", "error": "%s"}', str(exc)[:200])
+        raise EmailSendError(f"Falha SMTP ao enviar para {to}: {exc.__class__.__name__}") from exc
+    return None
+
+
+# Emergent managed email proxy — a CONSTANT, never read from env (survives deployment).
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+
+
+async def _send_via_emergent(to: str, subject: str, html: str) -> str | None:
+    key = _env("EMERGENT_EMAIL_KEY")
+    if not key:
+        raise EmailSendError(
+            "Nenhum provedor de e-mail configurado: defina SMTP_HOST (e EMAIL_FROM) "
+            "ou EMERGENT_EMAIL_KEY no ambiente do backend."
+        )
+    payload = {"to": [to], "subject": subject, "html": html, "from_name": _env("EMAIL_FROM_NAME") or "Gestão Esportiva Escolar"}
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-
                 f"{EMAIL_BASE_URL}/api/v1/email/send",
-
-                headers={"X-Email-Key": _env_required("EMERGENT_EMAIL_KEY")},
-
+                headers={"X-Email-Key": key},
                 json=payload,
-
             )
-
         resp.raise_for_status()
-
         return resp.json().get("id")
-
     except httpx.HTTPStatusError as e:
-        logger.error("Email send failed: %s %s", e.response.status_code, e.response.text)
+        logger.error('{"event": "email_send_failed", "provider": "emergent", "status": %d, "body": "%s"}',
+                     e.response.status_code, e.response.text[:200])
+        raise EmailSendError(f"Provedor de e-mail recusou o envio (HTTP {e.response.status_code}).") from e
+    except httpx.HTTPError as e:
+        logger.error('{"event": "email_send_failed", "provider": "emergent", "error": "%s"}', str(e)[:200])
+        raise EmailSendError("Falha de rede ao contatar o provedor de e-mail.") from e
 
+
+async def send_email(*, to: str, subject: str, html: str) -> str | None:
+    """Send one transactional email through the configured provider.
+
+    Raises EmailSendError on any failure — callers must not swallow it when the
+    HTTP response is supposed to promise delivery. Returns the provider id
+    (None for SMTP; the SMTP protocol has no provider id).
+    """
+    _assert_safe_email(subject, html)
+    cfg = smtp_config()
+    try:
+        if cfg:
+            return await _send_via_smtp(cfg, to, subject, html)
+        return await _send_via_emergent(to, subject, html)
+    except (EmailSendError, ValueError):
         raise
-
-    except Exception as e:
-        logger.error("Email send error: %s", str(e))
-
-        raise
+    except Exception as exc:
+        logger.error('{"event": "email_send_unexpected", "provider": "%s", "error": "%s"}', provider_name(), str(exc)[:200])
+        raise EmailSendError(f"Falha ao enviar e-mail via {provider_name()}: {exc.__class__.__name__}") from exc
 
 
 # ---------- Server-side template (G4: callers pass IDs, never markup) ----------

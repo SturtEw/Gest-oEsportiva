@@ -209,6 +209,8 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
     if (!forgotEmail.trim()) { setLocalError('Informe o e-mail da sua conta.'); return }
     setForgotLoading(true); resetFeedback()
     try {
+      // Success means the BACKEND confirmed the send (HTTP 200). A 502 means the
+      // e-mail did not leave — the ApiError message is shown, never a success screen.
       await api.forgotPassword(forgotEmail.trim())
       setForgotSuccess(true)
     } catch (cause) {

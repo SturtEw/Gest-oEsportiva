@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'professor' | 'responsavel' | 'aluno'
 export type AccountStatus = 'ativo' | 'pendente' | 'reprovado' | 'inativo'
 export type AttendanceStatus = 'presente' | 'ausente' | 'justificada'
 export type JustificationStatus = 'pendente' | 'aprovada' | 'rejeitada'
-export type PortalSection = 'inicio' | 'turma' | 'presencas' | 'avaliacoes' | 'conquistas' | 'atividades' | 'meu-treino' | 'treinamentos' | 'registros' | 'comunicados' | 'duvidas' | 'forum' | 'conta'
+export type PortalSection = 'inicio' | 'turma' | 'presencas' | 'avaliacoes' | 'conquistas' | 'atividades' | 'aulas' | 'meu-treino' | 'treinamentos' | 'registros' | 'comunicados' | 'duvidas' | 'forum' | 'conta'
 export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'offline' | 'single_worker'
 export type MessageAuthorRole = 'aluno' | 'responsavel' | 'professor'
 export type DeliveryStatus = 'sending' | 'sent' | 'failed'
@@ -75,6 +75,8 @@ export interface CreatedTeacherInvite {
   path: string
   url: string
   email_enviado: boolean
+  /** Why the delivery failed, when it did (null on success or when not requested). */
+  email_erro: string | null
 }
 export interface TeacherInvitePreview { email: string; nome: string | null; turma: InviteClassBrief | null; expira_em: string | null }
 export interface TeacherClass { id: string; nome: string; modalidade: string; ano: number; capacidade: number; total_alunos: number }

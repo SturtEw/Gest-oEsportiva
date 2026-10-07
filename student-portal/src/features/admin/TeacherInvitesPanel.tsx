@@ -162,9 +162,18 @@ export function TeacherInvitesPanel({ classes, revision }: { classes: AdminClass
                 </Button>
               </div>
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                {created.email_enviado
-                  ? <><MailCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />Também enviamos o link para o e-mail do professor.</>
-                  : <><MailX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-notice-foreground" />O e-mail não foi enviado. Copie o link e mande por WhatsApp ou pelo seu e-mail.</>}
+                {created.email_enviado ? (
+                  <><MailCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />Também enviamos o link para o e-mail do professor.</>
+                ) : (
+                  <>
+                    <MailX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-notice-foreground" />
+                    <span>
+                      {sendEmail && created.email_erro
+                        ? <>O e-mail não pôde ser enviado ({created.email_erro}). Copie o link e mande por WhatsApp ou pelo seu e-mail.</>
+                        : <>O envio por e-mail estava desmarcado. Copie o link e mande por WhatsApp ou pelo seu e-mail.</>}
+                    </span>
+                  </>
+                )}
               </p>
               <p className="text-xs leading-5 text-muted-foreground">
                 Este link aparece só agora: o portal guarda apenas uma versão cifrada dele. Se perder, use “Novo link” na lista; o link anterior deixa de valer.
