@@ -92,7 +92,7 @@ async def analytics_resumo(turma_id: str | None = None, subgrupo_id: str | None 
             },
         },
     ]
-    result = await db.sessoes_presenca.aggregate(pipeline).to_list(length=1)
+    result = await (await db.sessoes_presenca.aggregate(pipeline)).to_list(length=1)
     base = result[0] if result else {"alunos_hoje": 0, "sessoes_hoje": 0, "sessoes_7d": 0, "total_sessoes": 0, "tempo_medio_segundos": None}
     base["tempo_medio"] = _fmt_duration(base["tempo_medio_segundos"])
     return base
@@ -133,7 +133,7 @@ async def analytics_daily(turma_id: str | None = None, subgrupo_id: str | None =
         {"$project": {"_id": 0, "data": {"$dateToString": {"format": "%Y-%m-%d", "date": "$_id"}}, "alunos": {"$size": "$alunos"}, "sessoes": 1}},
         {"$sort": {"data": 1}},
     ]
-    by_day = {item["data"]: item for item in await db.sessoes_presenca.aggregate(pipeline).to_list(length=MAX_DAYS)}
+    by_day = {item["data"]: item for item in await (await db.sessoes_presenca.aggregate(pipeline)).to_list(length=MAX_DAYS)}
 
     # Preenche os dias vazios (gráfico contínuo, sem buracos).
     series = []
@@ -160,14 +160,14 @@ async def analytics_peak_hours(turma_id: str | None = None, subgrupo_id: str | N
         {"$match": match},
         {"$group": {"_id": {"$hour": "$entrada"}, "total": {"$sum": 1}}},
     ]
-    entradas = {item["_id"]: item["total"] for item in await db.sessoes_presenca.aggregate(entradas_pipeline).to_list(length=24)}
+    entradas = {item["_id"]: item["total"] for item in await (await db.sessoes_presenca.aggregate(entradas_pipeline)).to_list(length=24)}
 
     # Saídas por hora (mesma janela, campo saida preenchido).
     saidas_pipeline = [
         {"$match": {**match, "saida": {"$ne": None}}},
         {"$group": {"_id": {"$hour": "$saida"}, "total": {"$sum": 1}}},
     ]
-    saidas = {item["_id"]: item["total"] for item in await db.sessoes_presenca.aggregate(saidas_pipeline).to_list(length=24)}
+    saidas = {item["_id"]: item["total"] for item in await (await db.sessoes_presenca.aggregate(saidas_pipeline)).to_list(length=24)}
 
     horas = [
         {"hora": h, "label": f"{h:02d}h", "entradas": entradas.get(h, 0), "saidas": saidas.get(h, 0)}
@@ -222,7 +222,7 @@ async def analytics_student_detail(aluno_id: str, mes: str | None = None, user: 
     pipeline.append({"$set": {"subgrupo_nome": {"$first": "$subgrupo.nome"}}})
     pipeline.append({"$unset": ["subgrupo"]})
 
-    sessoes = await db.sessoes_presenca.aggregate(pipeline).to_list(length=400)
+    sessoes = await (await db.sessoes_presenca.aggregate(pipeline)).to_list(length=400)
     total_dias = len({item["entrada"].date().isoformat() for item in sessoes})
     return {
         "aluno": {"id": student["id"], "nome": student.get("nome") or "Aluno"},
@@ -259,7 +259,7 @@ async def analytics_student_summary(aluno_id: str, user: User = Depends(get_curr
         {"$group": {"_id": "$_day", "in_month": {"$first": {"$month": "$_day"}}}},
         {"$group": {"_id": "$in_month", "dias": {"$sum": 1}}},
     ]
-    counts = {item["_id"]: item["dias"] for item in await db.sessoes_presenca.aggregate(pipeline).to_list(length=12)}
+    counts = {item["_id"]: item["dias"] for item in await (await db.sessoes_presenca.aggregate(pipeline)).to_list(length=12)}
     mes_atual = counts.get(start_this.month, 0)
     mes_anterior = counts.get(start_prev.month, 0)
     # Dias corridos no mês atual até hoje (denominador da frequência).

@@ -218,7 +218,7 @@ async def get_class_ranking(aluno_id: str, user: User = Depends(get_current_user
 
     ]
 
-    participants = await db.alunos.aggregate(pipeline).to_list(length=200)
+    participants = await (await db.alunos.aggregate(pipeline)).to_list(length=200)
 
     entries = []
 
