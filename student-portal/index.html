@@ -6,9 +6,21 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="theme-color" content="#153B34" />
     <meta name="description" content="Seu percurso, suas avaliações e sua conexão com a escola." />
-    <meta name="color-scheme" content="light" />
+    <!-- theme-color dinâmico: claro/escuro definidos no <meta> inicial e atualizados pelo ThemeProvider. -->
+    <meta name="color-scheme" content="light dark" />
     <title>Área do aluno — Gestão Esportiva Escolar</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Anti-flash: aplica o tema salvo ANTES do primeiro paint (o ThemeProvider
+      // React sincroniza o estado depois; aqui só o <html> muda, sem re-render).
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme')
+          var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) { /* localStorage indisponível: fica no claro. */ }
+      })()
+    </script>
   </head>
   <body class="bg-body">
     <div id="root"></div>
