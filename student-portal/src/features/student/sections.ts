@@ -12,6 +12,7 @@ const loaders = {
   avaliacoes: () => import('@/features/assessments/AssessmentSection'),
   conquistas: () => import('@/features/achievements/AchievementSection'),
   atividades: () => import('@/features/activities/student/StudentActivitiesSection'),
+  aulas: () => import('@/features/subgroups/StudentCheckIn'),
   'meu-treino': () => import('@/features/student/workouts/StudentWorkoutsSection'),
   treinamentos: () => import('@/features/treinamentos/TreinamentosSection'),
   registros: () => import('@/features/records/RecordsSection'),
@@ -26,6 +27,7 @@ export const AttendanceSection = lazy(() => loaders.presencas().then((module) =>
 export const AssessmentSection = lazy(() => loaders.avaliacoes().then((module) => ({ default: module.AssessmentSection })))
 export const AchievementSection = lazy(() => loaders.conquistas().then((module) => ({ default: module.AchievementSection })))
 export const StudentActivitiesSection = lazy(() => loaders.atividades().then((module) => ({ default: module.StudentActivitiesSection })))
+export const StudentCheckIn = lazy(() => loaders.aulas().then((module) => ({ default: module.StudentCheckIn })))
 export const StudentWorkoutsSection = lazy(() => loaders['meu-treino']().then((module) => ({ default: module.StudentWorkoutsSection })))
 export const TreinamentosSection = lazy(() => loaders.treinamentos().then((module) => ({ default: module.TreinamentosSection })))
 export const RecordsSection = lazy(() => loaders.registros().then((module) => ({ default: module.RecordsSection })))

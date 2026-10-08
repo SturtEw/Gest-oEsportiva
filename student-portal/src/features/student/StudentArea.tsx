@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useRef, useState } from 'react'
-import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, MessagesSquare, RefreshCw, Settings, Users, X, Trophy } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, MessagesSquare, RefreshCw, Settings, Timer, Users, X, Trophy } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { HomeDashboard } from '@/features/home/HomeDashboard'
 import {
   AchievementSection, AnnouncementsSection, AssessmentSection, AttendanceSection, ClassSummary, EnrollmentHome,
-  QuestionThread, RecordsSection, StudentActivitiesSection, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection, ForumView,
+  QuestionThread, RecordsSection, StudentActivitiesSection, StudentCheckIn, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection, ForumView,
 } from './sections'
 import { useQuestionThread } from '@/hooks/useQuestionThread'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
@@ -28,6 +28,7 @@ const sections: { id: PortalSection; label: string; short: string; icon: typeof 
   { id: 'avaliacoes', label: 'Avaliações', short: 'Avaliações', icon: BookOpenCheck },
   { id: 'conquistas', label: 'Conquistas e pontos', short: 'Conquistas', icon: Award },
   { id: 'atividades', label: 'Atividades da turma', short: 'Atividades', icon: Flag },
+  { id: 'aulas', label: 'Aulas e presença', short: 'Aulas', icon: Timer },
   { id: 'meu-treino', label: 'Meu treino individual', short: 'Meu treino', icon: Dumbbell },
   { id: 'treinamentos', label: 'Treinamentos e chaves', short: 'Chaves', icon: Trophy },
   { id: 'registros', label: 'Ocorrências e justificativas', short: 'Registros', icon: BookOpen },
@@ -63,6 +64,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
   const [forcedPrivate, setForcedPrivate] = useState(false)
   const [enrollmentRevision, setEnrollmentRevision] = useState(0)
   const [activitiesRevision, setActivitiesRevision] = useState(0)
+  const [subgroupsRevision, setSubgroupsRevision] = useState(0)
   const [workoutsRevision, setWorkoutsRevision] = useState(0)
   const [forumRevision, setForumRevision] = useState(0)
   const [notificationsRevision, setNotificationsRevision] = useState(0)
@@ -88,6 +90,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     // A teacher's decision on a join request reaches the student as "enrollment".
     if (event.section === 'enrollment') setEnrollmentRevision((value) => value + 1)
     if (event.section === 'activities') setActivitiesRevision((value) => value + 1)
+    if (event.section === 'subgroups') setSubgroupsRevision((value) => value + 1)
     if (event.section === 'individual_workouts') setWorkoutsRevision((value) => value + 1)
     // Fórum: novas mensagens chegam sem recarregar (o ChatRoom busca o delta).
     if (event.section === 'forum') setForumRevision((value) => value + 1)
@@ -125,6 +128,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       case 'avaliacoes': return <AssessmentSection assessments={snapshot.avaliacoes} />
       case 'conquistas': return <AchievementSection alunoId={studentId} studentName={snapshot.aluno.nome} awards={snapshot.conquistas} participates={snapshot.aluno.participa_ranking} canEditPreference={canEditRanking && !isImpersonating} forcedPrivate={forcedPrivate} setForcedPrivate={setForcedPrivate} onPreferenceChange={setStudentRankingPreference} />
       case 'atividades': return <StudentActivitiesSection alunoId={studentId} revision={activitiesRevision} live={connection.status === 'live'} canJoin={user.tipo === 'aluno' && !isImpersonating} />
+      case 'aulas': return <StudentCheckIn alunoId={studentId} revision={subgroupsRevision} live={connection.status === 'live'} canCheckIn={user.tipo === 'aluno' && !isImpersonating} />
       case 'meu-treino': return <StudentWorkoutsSection alunoId={studentId} revision={workoutsRevision} canExecute={user.tipo === 'aluno' && !isImpersonating} onNotice={() => undefined} />
       case 'treinamentos': return <TreinamentosSection />
       case 'registros': return <RecordsSection incidents={snapshot.ocorrencias} justifications={snapshot.justificativas} />

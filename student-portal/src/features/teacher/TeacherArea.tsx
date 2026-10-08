@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Timer, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -24,9 +24,10 @@ import { UpcomingClasses } from './dashboard/UpcomingClasses'
 import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, ForumView, TeacherWorkoutsView, prefetchTeacherView } from './sections'
+import { ProfessorDashboardGroups } from '@/features/subgroups/ProfessorDashboardGroups'
 import { AccountManagement } from '@/features/account/AccountManagement'
 
-type View = 'dashboard' | 'turmas' | 'atividades' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'forum' | 'agenda' | 'conta'
+type View = 'dashboard' | 'turmas' | 'atividades' | 'aulas' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'forum' | 'agenda' | 'conta'
 
 interface Student { id: string; nome: string; turma_id: string }
 
@@ -37,6 +38,7 @@ const VIEWS: Record<View, ViewMeta> = {
   dashboard: { label: 'Painel', short: 'Painel', icon: LayoutDashboard, eyebrow: 'Visão geral', description: 'Aulas de hoje, a agenda à frente e como cada turma e aluno está indo.' },
   turmas: { label: 'Turmas', short: 'Turmas', icon: Users, eyebrow: 'Suas turmas', description: 'Os alunos de cada turma. Abra as dúvidas de um aluno ou registre uma conquista.' },
   atividades: { label: 'Atividades', short: 'Atividades', icon: Flag, eyebrow: 'Torneios e eventos', description: 'Crie quantas atividades quiser para suas turmas. Os alunos marcam interesse; você monta os times, o chaveamento e registra os placares.' },
+  aulas: { label: 'Aulas e check-in', short: 'Aulas', icon: Timer, eyebrow: 'Subgrupos da turma', description: 'Crie subgrupos (Judô, Natação, Futsal…), acompanhe em tempo real quem está em aula e veja o relatório de presença com o tempo de permanência.' },
   workouts: { label: 'Treino individual', short: 'Treino 1:1', icon: Dumbbell, eyebrow: 'Prescrição individual', description: 'Prescreva rotinas de treino para um aluno por vez — de um modelo pronto ou do zero — e acompanhe o que ele já concluiu.' },
   prescribed: { label: 'Treinos prescritos', short: 'Prescritos', icon: ClipboardList, eyebrow: 'Todos os treinos', description: 'Todos os treinos individuais que você passou para os seus alunos, com o progresso de cada um.' },
   forum: { label: 'Fórum da turma', short: 'Fórum', icon: MessagesSquare, eyebrow: 'Comunidade', description: 'Converse com cada turma em um grupo próprio, em tempo real. Os alunos veem o mesmo grupo.' },
@@ -154,6 +156,7 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
       item('dashboard'),
       item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
       item('atividades'),
+      item('aulas'),
       item('workouts'),
       item('prescribed'),
   item('forum'),
@@ -397,6 +400,8 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
                   )}
 
                   {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
+
+                  {view === 'aulas' && <ProfessorDashboardGroups turmaId={classes[0]?.id ?? ''} revision={revision} live={connection.status === 'live'} />}
 
         {view === 'workouts' && <TeacherWorkoutsView students={students} revision={revision} readOnly={isImpersonating} onNotice={setNotice} />}
 

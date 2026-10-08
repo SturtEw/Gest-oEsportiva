@@ -24,6 +24,24 @@ interface Props {
 
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
+/**
+ * Skeletons live at MODULE SCOPE (outside the component body).
+ *
+ * Why: JSX declared inside a component body is rebuilt on every render — a new
+ * element tree each time, so React cannot bail out and reconciliation re-runs
+ * for a subtree that never changes. A module-level constant (or its own
+ * component in a separate file) is a stable reference React can skip entirely.
+ */
+const WorkoutsLoading = (
+  <div className="space-y-5" aria-busy="true" aria-label="Carregando treinos">
+    <Skeleton className="h-40 rounded-2xl" />
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
+    </div>
+  </div>
+)
+
 function labelForDate(iso: string): string {
   const date = new Date(`${iso}T12:00:00`)
   const weekday = WEEKDAY_LABELS[date.getDay()]
@@ -69,7 +87,7 @@ export function StudentWorkoutsSection({ alunoId, revision, canExecute, onNotice
     }
   }
 
-  if (loading) return <Skeleton className="h-64 rounded-2xl" />
+  if (loading) return WorkoutsLoading
 
   return (
     <div className="space-y-5">
