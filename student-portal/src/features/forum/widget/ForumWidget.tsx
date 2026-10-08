@@ -249,18 +249,23 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
   const [win, setWin] = useState<Point>(() => clampWindow(window.innerWidth - WINDOW_W - MARGIN, window.innerHeight - WINDOW_H - MARGIN))
   const [fullscreen, setFullscreen] = useState(false)
   const winDrag = useRef({ active: false, pointerId: -1, startPointer: { x: 0, y: 0 } as Point, startPos: { x: 0, y: 0 } as Point })
+  // Referência do <section> raiz: a captura de pointer fica nele (e não no
+  // header), para o arrasto sobreviver ao cursor saindo do header.
+  const windowRef = useRef<HTMLElement | null>(null)
 
   const startWindowDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (fullscreen || (event.pointerType === 'mouse' && event.button !== 0)) return
-    // Não arrastar quando o gesto começa num botão do header (voltar/fechar…).
-    if ((event.target as HTMLElement).closest('button')) return
+    // Não arrastar quando o gesto começa num controle interativo do header.
+    const target = event.target as HTMLElement
+    if (target.closest('button, input, textarea, a')) return
     winDrag.current = {
       active: true,
       pointerId: event.pointerId,
       startPointer: { x: event.clientX, y: event.clientY },
       startPos: win,
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    // Capture no elemento raiz da janela: o gesto continua mesmo saindo do header.
+    windowRef.current?.setPointerCapture(event.pointerId)
   }
 
   const moveWindowDrag = (event: React.PointerEvent<HTMLElement>) => {
@@ -273,7 +278,7 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
     const state = winDrag.current
     if (!state.active || event.pointerId !== state.pointerId) return
     state.active = false
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    windowRef.current?.releasePointerCapture?.(event.pointerId)
   }
 
   const toggleFullscreen = useCallback(() => {
@@ -326,6 +331,7 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
 
       {open && (
         <section
+          ref={windowRef}
           role="dialog"
           aria-label="Fórum da turma"
           className={"fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/10 " + (fullscreen ? "" : "rounded-2xl")}

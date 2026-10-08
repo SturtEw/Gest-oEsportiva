@@ -19,6 +19,11 @@ interface Props {
   myRole: 'professor' | 'aluno'
   live: boolean
   revision: number
+  /**
+   * Height strategy: "page" (default) sizes to the viewport minus page chrome;
+   * "fill" sizes to the parent container (floating widget / fullscreen).
+   */
+  layout?: 'page' | 'fill'
 }
 
 const DATE_GROUP = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' })
@@ -29,7 +34,7 @@ function dayLabel(value: string): string {
   return Number.isNaN(parsed.getTime()) ? '' : DATE_GROUP.format(parsed)
 }
 
-export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, live, revision }: Props) {
+export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, live, revision, layout = 'page' }: Props) {
   const forum = useForum({ turmaId, revision })
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -87,8 +92,8 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
   }
 
   return (
-    <Card className="flex h-[calc(100vh-16rem)] min-h-[420px] flex-col shadow-none ring-1 ring-border">
-      <CardHeader className="border-b border-border/70 py-3">
+    <Card className={`flex flex-col overflow-hidden py-0 gap-0 shadow-none ring-1 ring-border ${layout === 'fill' ? 'h-full min-h-0 flex-1' : 'h-[calc(100vh-16rem)] min-h-[420px]'}`}>
+      <CardHeader className={"py-3 border-b border-border/70 " + (layout === 'fill' ? 'hidden' : '')}>
         <div className="flex items-center gap-3">
           <Avatar className="size-10 bg-[#EAF0E5]">
             <AvatarFallback className="bg-[#EAF0E5] text-sm font-bold text-[#234E40]">{initials(turmaNome ?? 'T')}</AvatarFallback>
@@ -105,7 +110,7 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="flex-1 overflow-y-auto bg-[#FAFCF7] px-4 py-4"
+        className="min-h-0 flex-1 overflow-y-auto bg-[#FAFCF7] px-4 py-4"
         role="log"
         aria-label={`Mensagens da turma ${turmaNome ?? ''}`}
         aria-live="polite"
@@ -155,7 +160,7 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
         )}
       </div>
 
-      <form onSubmit={submit} className="border-t border-border/70 p-3">
+      <form onSubmit={submit} className="shrink-0 border-t border-border/70 p-3">
         <div className="flex items-end gap-2">
           <Textarea
             value={draft}
