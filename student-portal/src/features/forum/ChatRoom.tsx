@@ -93,19 +93,21 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
 
   return (
     <Card className={`flex flex-col overflow-hidden py-0 gap-0 shadow-none ring-1 ring-border ${layout === 'fill' ? 'h-full min-h-0 flex-1' : 'h-[calc(100vh-16rem)] min-h-[420px]'}`}>
-      <CardHeader className={"py-3 border-b border-border/70 " + (layout === 'fill' ? 'hidden' : '')}>
-        <div className="flex items-center gap-3">
-          <Avatar className="size-10 bg-[#EAF0E5]">
-            <AvatarFallback className="bg-[#EAF0E5] text-sm font-bold text-[#234E40]">{initials(turmaNome ?? 'T')}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate font-display text-base">{turmaNome ?? 'Turma'}</CardTitle>
-            <CardDescription className="truncate">
-              Grupo da turma · {totalMembros ?? '—'} membro(s) · {live ? 'conectado em tempo real' : 'atualização periódica'}
-            </CardDescription>
+      {layout !== 'fill' && (
+        <CardHeader className="py-3 border-b border-border/70">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-10 bg-[#EAF0E5]">
+              <AvatarFallback className="bg-[#EAF0E5] text-sm font-bold text-[#234E40]">{initials(turmaNome ?? 'T')}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="truncate font-display text-base">{turmaNome ?? 'Turma'}</CardTitle>
+              <CardDescription className="truncate">
+                Grupo da turma · {totalMembros ?? '—'} membro(s) · {live ? 'conectado em tempo real' : 'atualização periódica'}
+              </CardDescription>
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
 
       <div
         ref={scrollRef}

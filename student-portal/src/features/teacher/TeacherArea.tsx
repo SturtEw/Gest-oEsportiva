@@ -27,6 +27,7 @@ import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkout
 import { ProfessorDashboardGroups } from '@/features/subgroups/ProfessorDashboardGroups'
 import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
+import { AppDownloadBanner } from '@/components/AppDownloadBanner'
 
 type View = 'dashboard' | 'turmas' | 'atividades' | 'aulas' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'forum' | 'agenda' | 'conta'
 
@@ -239,6 +240,7 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
 
   return (
     <>
+      <AppDownloadBanner />
       {forumWidget}
       <AppShell
         nav={nav}

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AppDownloadBanner } from '@/components/AppDownloadBanner'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 import { NotificationBell } from '@/components/NotificationBell'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
@@ -157,6 +158,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
   }
 
   return <div className="min-h-screen bg-background text-foreground">
+    <AppDownloadBanner />
     {forumWidget}
     <div className="min-h-screen lg:flex">
       <aside className="sticky top-0 hidden h-screen w-[252px] shrink-0 flex-col bg-sidebar px-4 py-6 text-sidebar-foreground lg:flex">
