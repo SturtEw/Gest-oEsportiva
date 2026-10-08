@@ -75,9 +75,17 @@ interface CardProps {
   onCheckOut: (id: string) => Promise<void>
 }
 
+/**
+ * Componente folha: só ele re-renderiza no tick de 1s — o card inteiro não.
+ * (Auditoria M4: um setInterval por card multiplicava re-renders do portal.)
+ */
+function Elapsed({ startedAt }: { startedAt: string }) {
+  const elapsed = useElapsedTimer(startedAt)
+  return <span className="tabular-nums">{elapsed}</span>
+}
+
 function StudentSubgroupCard({ subgroup, canCheckIn, onCheckIn, onCheckOut }: CardProps) {
   const inClass = Boolean(subgroup.minha_sessao)
-  const elapsed = useElapsedTimer(inClass ? subgroup.minha_sessao!.entrada : null)
 
   const handleToggle = async () => {
     if (inClass) await onCheckOut(subgroup.id)
@@ -101,7 +109,7 @@ function StudentSubgroupCard({ subgroup, canCheckIn, onCheckIn, onCheckOut }: Ca
         {inClass ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100">
             <Timer aria-hidden="true" className="size-4" />
-            <span>Você está em aula — <span className="tabular-nums">{elapsed}</span></span>
+            <span>Você está em aula — <Elapsed startedAt={subgroup.minha_sessao!.entrada} /></span>
           </div>
         ) : null}
 

@@ -54,6 +54,9 @@ export interface RegisterResponse {
   turma?: JoinedClass | null
   /** Set when the account was created but the invite could not be applied. */
   aviso_convite?: string | null
+  /** Verification email delivery result (backend A3 fix); undefined for Google signups. */
+  email_enviado?: boolean
+  email_erro?: string | null
 }
 
 /** Signup through the root admin's invite link. The e-mail comes from the invite. */

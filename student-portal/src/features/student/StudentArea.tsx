@@ -81,6 +81,17 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
 
   const refresh = useCallback(() => { portalRefreshRef.current(); questionsRefreshRef.current() }, [])
   const onInvalidate = useCallback((event: { section: string }) => {
+    // Seção "*" = polling de fallback (single_worker): refresca tudo.
+    if (event.section === '*') {
+      portalRefreshRef.current(); questionsRefreshRef.current()
+      setEnrollmentRevision((value) => value + 1)
+      setActivitiesRevision((value) => value + 1)
+      setSubgroupsRevision((value) => value + 1)
+      setWorkoutsRevision((value) => value + 1)
+      setForumRevision((value) => value + 1)
+      setNotificationsRevision((value) => value + 1)
+      return
+    }
     // Each invalidation touches only the section it belongs to. The blanket
     // portalRefreshRef.current() call that used to run for every event made
     // the whole student area flash (full skeleton) on every action — award

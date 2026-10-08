@@ -76,7 +76,39 @@ def matches(document: dict, query: dict) -> bool:
     return True
 
 
+def _eval_pipeline(expr, document: dict, now):
+    """Minimal pipeline-expression evaluator: literals, "$$NOW", $dateDiff and $max."""
+    from datetime import datetime
+    if isinstance(expr, str) and expr == "$$NOW":
+        return now if now is not None else datetime.now()
+    if isinstance(expr, dict):
+        if "$dateDiff" in expr:
+            spec = expr["$dateDiff"]
+            start = _eval_pipeline(spec["startDate"], document, now)
+            end = _eval_pipeline(spec["endDate"], document, now)
+            seconds = int((end - start).total_seconds())
+            return seconds if spec.get("unit") == "second" else seconds
+        if "$max" in expr:
+            values = [_eval_pipeline(item, document, now) for item in expr["$max"]]
+            return max(values)
+        return {key: _eval_pipeline(value, document, now) for key, value in expr.items()}
+    if isinstance(expr, str) and expr.startswith("$"):
+        return document.get(expr[1:])
+    return copy.deepcopy(expr)
+
+
 def _apply(document: dict, update: dict) -> None:
+    # Aggregation pipeline: resolves $$NOW once and evaluates the stages against
+    # the document (supports $set with $dateDiff/$max, which the audit fixes use).
+    if isinstance(update, list):
+        from lib.dates import now_utc
+        now = now_utc()
+        for stage in update:
+            if not isinstance(stage, dict) or "$set" not in stage:
+                continue
+            for key, expr in stage["$set"].items():
+                document[key] = _eval_pipeline(expr, document, now)
+        return
     for operator, fields in update.items():
         for key, value in fields.items():
             if operator == "$set":
@@ -209,6 +241,9 @@ def enrollment_db(**collections: FakeCollection) -> SimpleNamespace:
         "turmas": FakeCollection(),
         "turma_convites": FakeCollection(unique=[("codigo", None)]),
         "solicitacoes_turma": FakeCollection(unique=[("aluno_id", {"status": "pendente"})]),
+        # Cascata da exclusão de turma (aulas e sessões de presença).
+        "subgrupos": FakeCollection(),
+        "sessoes_presenca": FakeCollection(),
     }
     defaults.update(collections)
     return SimpleNamespace(**defaults)

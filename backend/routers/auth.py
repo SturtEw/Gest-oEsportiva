@@ -509,12 +509,17 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
         raise
 
     # Confirmation e-mail for password registrations. Failure must not abort the
-    # account — the user can request a new link later — but it is logged so the gap is
-    # visible instead of silently leaving an account that can never be verified.
+    # account — the user can request a new link later — but the gap is REPORTED
+    # to the caller (email_enviado/email_erro) so the frontend can warn instead
+    # of showing a fake "confira seu e-mail" for a mail that never left.
+    email_enviado = True
+    email_erro: str | None = None
     if not google_claims:
         try:
             await _send_confirmation_email(user_document)
         except Exception as exc:
+            email_enviado = False
+            email_erro = str(exc)[:200] or "Falha no envio do e-mail de verificação"
             logging.getLogger(__name__).error('{"event": "confirmation_email_failed", "email": "%s", "error": "%s"}', email, exc)
 
     joined_class = None
@@ -578,6 +583,10 @@ async def _create_registration(payload: RegisterAccountInput, response: Response
         "turma": joined_class,
 
         "aviso_convite": invite_warning,
+
+        "email_enviado": email_enviado,
+
+        "email_erro": email_erro,
 
     }
 

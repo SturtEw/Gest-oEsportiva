@@ -48,16 +48,17 @@ const json = (method: string, body?: unknown): { method: string; body?: string }
 // Keys are distinct from every other API module (see api.test.ts).
 export const subgroupsApi = {
   // ---- Professor ----
-  teacherSubgroups: () => request<{ subgrupos: SubgroupSummary[] }>('/api/subgrupos/professor'),
+  teacherSubgroups: (turmaId?: string) =>
+    request<{ subgrupos: SubgroupSummary[] }>(`/api/subgrupos/professor${turmaId ? `?turma_id=${encodeURIComponent(turmaId)}` : ''}`),
   createSubgroup: (payload: SubgroupInput) =>
     request<SubgroupSummary>('/api/subgrupos/professor', json('POST', payload)),
   updateSubgroup: (id: string, changes: Partial<Omit<SubgroupInput, 'turma_id'>>) =>
     request<SubgroupSummary>(`/api/subgrupos/professor/${encodeURIComponent(id)}`, json('PATCH', changes)),
   deleteSubgroup: (id: string) =>
     request<void>(`/api/subgrupos/professor/${encodeURIComponent(id)}`, json('DELETE')),
-  attendanceReport: (id: string) =>
-    request<{ subgrupo: { id: string; nome: string }; sessoes: AttendanceRecord[] }>(
-      `/api/subgrupos/professor/${encodeURIComponent(id)}/presencas`,
+  attendanceReport: (id: string, before?: string) =>
+    request<{ subgrupo: { id: string; nome: string }; sessoes: AttendanceRecord[]; total: number }>(
+      `/api/subgrupos/professor/${encodeURIComponent(id)}/presencas${before ? `?before=${encodeURIComponent(before)}` : ''}`,
     ),
   forceCheckout: (id: string, alunoId: string) =>
     request<void>(`/api/subgrupos/professor/${encodeURIComponent(id)}/presencas/${encodeURIComponent(alunoId)}`, json('DELETE')),

@@ -266,6 +266,9 @@ export function LoginScreen({ error, onLogin, onGoogleLogin, onRegistrationActiv
       clearInviteFromLocation()
       if (result.turma) toast.success(`Conta criada! Você já faz parte da turma ${result.turma.nome}.`)
       else if (result.aviso_convite) toast.warning(result.aviso_convite)
+      // A3: o backend agora informa se o e-mail de verificação saiu; sem isso
+      // seria uma tela de sucesso falsa.
+      if (result.email_enviado === false) toast.warning('Não conseguimos enviar o e-mail de verificação agora. Você pode reenviar depois em Minha conta.')
       if (result.user && result.status === 'ativo') onRegistrationActive(result.user)
       else setAccountState({
         status: 'pendente',

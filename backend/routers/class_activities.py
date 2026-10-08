@@ -40,6 +40,7 @@ from lib.notifications import notify_student
 from lib.impersonation import get_current_user_with_impersonation
 from lib.portal_access import get_authorized_aluno
 from lib.realtime import publish_class_event, publish_user_event
+from lib.roster import class_students
 from lib.security import get_current_user
 from models.models import User
 from services import brackets
@@ -184,9 +185,10 @@ async def _owned_activity(user: User, atividade_id: str) -> tuple[dict[str, Any]
     return atividade, turma
 
 
+# Shared with the subgroups router (lib/roster.py). Delegates via the module-level
+# `db` so tests can keep monkeypatching `router.db` / `router._class_students`.
 async def _class_students(turma_id: str) -> dict[str, str]:
-    cursor = db.alunos.find({"turma_id": turma_id}, {"_id": 0, "id": 1, "nome": 1}).sort("nome", 1)
-    return {item["id"]: item.get("nome") or "Aluno" async for item in cursor}
+    return await class_students(db, turma_id)
 
 
 async def _notify(atividade: dict[str, Any], professor_id: str | None) -> None:

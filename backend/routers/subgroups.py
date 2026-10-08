@@ -26,16 +26,19 @@ Student (o próprio aluno):
 """
 
 import uuid
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from lib.dates import now_utc
 from lib.db import db
 from lib.impersonation import get_current_user_with_impersonation
 from lib.portal_access import get_authorized_aluno
 from lib.realtime import publish_class_event, publish_user_event
+from lib.roster import class_students
 from lib.security import get_current_user
 from models.models import User
 
@@ -181,10 +184,6 @@ class SubgroupCreate(BaseModel):
     descricao: str | None = Field(default=None, max_length=500)
     status: str = Field(default="ativo", pattern="^(ativo|inativo)$")
 
-    @classmethod
-    def clean(cls, value: str) -> str:
-        return _clean(value) or value
-
 
 class SubgroupUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=2, max_length=60)
@@ -194,13 +193,17 @@ class SubgroupUpdate(BaseModel):
 
 # ─── Professor: gestão de subgrupos ──────────────────────────────────────────
 @router.get("/professor")
-async def teacher_subgroups(user: User = Depends(get_current_user)):
+async def teacher_subgroups(turma_id: str | None = None, user: User = Depends(get_current_user)):
     _require_teacher(user)
     turmas = {item["id"]: item async for item in db.turmas.find({"professor_id": user.id}, {"_id": 0, "id": 1})}
-    turma_ids = list(turmas)
-    if not turma_ids:
+    owned = list(turmas)
+    if not owned:
         return {"subgrupos": []}
-    items = await db.subgrupos.find({"turma_id": {"$in": turma_ids}}, {"_id": 0}).sort("criado_em", 1).limit(LIST_LIMIT).to_list(length=LIST_LIMIT)
+    # Filtro opcional no servidor: o painel de uma turma não precisa baixar
+    # (nem refetchar a cada check-in) os subgrupos das outras turmas.
+    match_ids = [turma_id] if turma_id in turmas else owned
+    query = {"turma_id": {"$in": match_ids}}
+    items = await db.subgrupos.find(query, {"_id": 0}).sort("criado_em", 1).limit(LIST_LIMIT).to_list(length=LIST_LIMIT)
     active, alunos_ativos = await _active_sessions([item["id"] for item in items])
     names = await _names_for(alunos_ativos)
     for item in items:
@@ -255,14 +258,19 @@ async def update_subgroup(subgrupo_id: str, payload: SubgroupUpdate, user: User 
 
 
 async def _close_open_sessions(subgrupo: dict[str, Any]) -> None:
-    agora = now_utc()
-    cursor = db.sessoes_presenca.find({"subgrupo_id": subgrupo["id"], "saida": None}, {"_id": 0, "id": 1, "entrada": 1})
-    async for sessao in cursor:
-        segundos = int((agora - sessao["entrada"]).total_seconds()) if sessao.get("entrada") else 0
-        await db.sessoes_presenca.update_one(
-            {"id": sessao["id"]},
-            {"$set": {"saida": agora, "tempo_permanencia_segundos": max(0, segundos)}},
-        )
+    """Encerra todas as sessões abertas do subgrupo em UMA operação atômica
+    (pipeline de aggregation: saída = agora, permanência calculada no banco)."""
+    await db.sessoes_presenca.update_many(
+        {"subgrupo_id": subgrupo["id"], "saida": None},
+        [
+            {"$set": {
+                "saida": "$$NOW",
+                "tempo_permanencia_segundos": {
+                    "$max": [0, {"$dateDiff": {"startDate": "$entrada", "endDate": "$$NOW", "unit": "second"}}]
+                },
+            }},
+        ],
+    )
 
 
 async def _teacher_summary(subgrupo_id: str) -> dict[str, Any]:
@@ -284,22 +292,28 @@ async def delete_subgroup(subgrupo_id: str, user: User = Depends(get_current_use
 
 # ─── Professor: relatório de presença ────────────────────────────────────────
 @router.get("/professor/{subgrupo_id}/presencas")
-async def attendance_report(subgrupo_id: str, user: User = Depends(get_current_user)):
+async def attendance_report(subgrupo_id: str, before: datetime | None = None, user: User = Depends(get_current_user)):
+    """Relatório de presença paginado por cursor (`before` = entrada ISO).
+
+    Retorna `total` para o front exibir "mostrando N de M" — sem isso, o corte
+    em LIST_LIMIT seria um bug silencioso de "presenças que somem".
+    """
     subgrupo = await _owned_subgroup(user, subgrupo_id)
-    nomes = await _class_students(subgrupo["turma_id"])
-    cursor = db.sessoes_presenca.find({"subgrupo_id": subgrupo_id}, {"_id": 0}).sort("entrada", -1).limit(LIST_LIMIT)
+    nomes = await class_students(db, subgrupo["turma_id"])
+    query: dict[str, Any] = {"subgrupo_id": subgrupo_id}
+    if before:
+        query["entrada"] = {"$lt": before}
+    cursor = db.sessoes_presenca.find(query, {"_id": 0}).sort("entrada", -1).limit(LIST_LIMIT)
     items = []
     async for sessao in cursor:
         view = _session_view(sessao)
         view["aluno_nome"] = nomes.get(sessao["aluno_id"], "Aluno")
         items.append(view)
-    return {"subgrupo": {"id": subgrupo["id"], "nome": subgrupo["nome"]}, "sessoes": items}
+    total = await db.sessoes_presenca.count_documents({"subgrupo_id": subgrupo_id})
+    return {"subgrupo": {"id": subgrupo["id"], "nome": subgrupo["nome"]}, "sessoes": items, "total": total}
 
 
-# Reutilizado do módulo de atividades.
-async def _class_students(turma_id: str) -> dict[str, str]:
-    cursor = db.alunos.find({"turma_id": turma_id}, {"_id": 0, "id": 1, "nome": 1}).sort("nome", 1)
-    return {item["id"]: item.get("nome") or "Aluno" async for item in cursor}
+# (shared roster helper lives in lib/roster.py)
 
 
 @router.delete("/professor/{subgrupo_id}/presencas/{aluno_id}", status_code=204)
@@ -353,10 +367,12 @@ async def checkin(subgrupo_id: str, user: User = Depends(get_current_user)):
     subgrupo = await _student_subgroup(aluno_id, subgrupo_id)
     if subgrupo.get("status") != "ativo":
         raise HTTPException(status_code=409, detail="Este subgrupo está inativo.")
+    # Regra de negócio: um aluno só pode estar em um subgrupo por vez. A garantia
+    # real é o índice parcial único (uma_sessao_aberta_por_aluno) — os find_one
+    # abaixo são só para devolver mensagens amigáveis antes de tentar inserir.
     existente = await db.sessoes_presenca.find_one({"subgrupo_id": subgrupo_id, "aluno_id": aluno_id, "saida": None})
     if existente:
         raise HTTPException(status_code=409, detail="Você já está em aula neste subgrupo.")
-    # Regra de negócio: um aluno só pode estar em um subgrupo por vez.
     outra = await db.sessoes_presenca.find_one({"aluno_id": aluno_id, "saida": None, "subgrupo_id": {"$ne": subgrupo_id}})
     if outra:
         raise HTTPException(status_code=409, detail="Você já está em outra aula. Saia dela antes de entrar nesta.")
@@ -370,10 +386,64 @@ async def checkin(subgrupo_id: str, user: User = Depends(get_current_user)):
         "saida": None,
         "tempo_permanencia_segundos": None,
     }
-    await db.sessoes_presenca.insert_one(dict(sessao))
+    try:
+        await db.sessoes_presenca.insert_one(dict(sessao))
+    except DuplicateKeyError as exc:
+        # Corrida: outro request do mesmo aluno inseriu a sessão aberta primeiro.
+        raise HTTPException(status_code=409, detail="Você já está em aula.") from exc
     sessao.pop("_id", None)
     await _notify(subgrupo, None)
     return {"sessao": _session_view(sessao), "subgrupo": await _student_view(subgrupo_id, aluno_id)}
+
+
+# Sessão sem saída após este limite é considerada abandonada (navegador fechado
+# sem checkout). Encerrada automaticamente com a flag auto_encerrada, para o
+# relatório distinguir presença real de sessão órfã.
+SESSION_STALE_SECONDS = 6 * 60 * 60
+
+
+async def close_stale_sessions(max_age_seconds: int = SESSION_STALE_SECONDS) -> int:
+    """Encerra em UMA operação atômica todas as sessões abertas antigas.
+
+    Usada pelo sync do aluno (ao abrir o portal) e pelo worker periódico do
+    lifespan. O tempo de permanência é calculado no banco via aggregation
+    pipeline ($dateDiff), no servidor — nunca no cliente.
+    """
+    limite = now_utc() - timedelta(seconds=max_age_seconds)
+    result = await db.sessoes_presenca.update_many(
+        {"saida": None, "entrada": {"$lt": limite}},
+        [
+            {"$set": {
+                "saida": "$$NOW",
+                "auto_encerrada": True,
+                "tempo_permanencia_segundos": {
+                    "$max": [0, {"$dateDiff": {"startDate": "$entrada", "endDate": "$$NOW", "unit": "second"}}]
+                },
+            }},
+        ],
+    )
+    return result.modified_count
+
+
+@router.post("/aluno/sync")
+async def student_sessions_sync(user: User = Depends(get_current_user)):
+    """Chamado ao abrir o portal: encerra sessões abandonadas do próprio aluno
+    (fecha o navegador sem 'Sair') e devolve o estado atual."""
+    aluno_id = await _require_student_account(user)
+    fechadas = await db.sessoes_presenca.update_many(
+        {"aluno_id": aluno_id, "saida": None, "entrada": {"$lt": now_utc() - timedelta(seconds=SESSION_STALE_SECONDS)}},
+        [
+            {"$set": {
+                "saida": "$$NOW",
+                "auto_encerrada": True,
+                "tempo_permanencia_segundos": {
+                    "$max": [0, {"$dateDiff": {"startDate": "$entrada", "endDate": "$$NOW", "unit": "second"}}]
+                },
+            }},
+        ],
+    )
+    ativa = await db.sessoes_presenca.find_one({"aluno_id": aluno_id, "saida": None}, {"_id": 0})
+    return {"sessao_ativa": ativa, "encerradas_automaticamente": fechadas.modified_count}
 
 
 @router.post("/aluno/{subgrupo_id}/checkout")

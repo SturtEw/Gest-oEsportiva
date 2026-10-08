@@ -411,6 +411,12 @@ async def delete_class(turma_id: str, user: User = Depends(get_current_user)):
 
     member_ids = list(turma.get("alunos_ids", []))
 
+    # Cascata: aulas (subgrupos) e sessões de presença morrem com a turma —
+    # sem isso ficam órfãos para sempre, poluindo relatórios e contagens.
+    await db.subgrupos.delete_many({"turma_id": turma_id})
+
+    await db.sessoes_presenca.delete_many({"turma_id": turma_id})
+
     if member_ids:
         await db.alunos.update_many({"id": {"$in": member_ids}}, {"$set": {"turma_id": None}})
 

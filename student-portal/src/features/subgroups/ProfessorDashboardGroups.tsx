@@ -7,7 +7,7 @@
  * com `saida` nula), nunca no cliente.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CircleAlert, LogOut, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -15,15 +15,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { usePollingRevision } from '@/hooks/usePollingRevision'
 import { api } from '@/lib/api'
 import type { AttendanceRecord, SubgroupSummary } from '@/lib/api/subgroups'
 
 interface Props {
   turmaId: string
   revision: number
-  /** Realtime is pushing changes; otherwise the caller refetches by polling. */
+  /** Realtime is pushing changes; otherwise the component polls. */
   live: boolean
-  onPoll?: () => void
 }
 
 /** Skeletons at module scope: stable element references, never rebuilt per render. */
@@ -35,7 +35,7 @@ const CardsLoading = (
   </div>
 )
 
-export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Props) {
+export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
   const [subgroups, setSubgroups] = useState<SubgroupSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,12 +43,14 @@ export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Pro
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Sem realtime empurrando, o polling cobre a lacuna (mesmo padrão das outras seções).
+  const tick = usePollingRevision(!live)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await api.teacherSubgroups()
-      setSubgroups(data.subgrupos.filter((item) => item.turma_id === turmaId))
+      const data = await api.teacherSubgroups(turmaId || undefined)
+      setSubgroups(data.subgrupos)
       setError(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os subgrupos.')
@@ -58,11 +60,11 @@ export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Pro
   }, [turmaId])
 
   // Realtime invalidation (revision) and polling tick share this refetch.
-  useEffect(() => { void load() }, [load, revision])
+  useEffect(() => { void load() }, [load, revision, tick])
 
   const create = async () => {
     if (name.trim().length < 2) return
-    setCreating(true)
+    setCreating(true); setError(null)
     try {
       await api.createSubgroup({ turma_id: turmaId, nome: name.trim(), descricao: description.trim() || null })
       setName('')
@@ -76,6 +78,7 @@ export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Pro
   }
 
   const remove = async (id: string) => {
+    setError(null)
     try {
       await api.deleteSubgroup(id)
       if (selectedId === id) setSelectedId(null)
@@ -86,6 +89,7 @@ export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Pro
   }
 
   const toggleStatus = async (subgroup: SubgroupSummary) => {
+    setError(null)
     try {
       await api.updateSubgroup(subgroup.id, { status: subgroup.status === 'ativo' ? 'inativo' : 'ativo' })
       await load()
@@ -179,23 +183,34 @@ export function ProfessorDashboardGroups({ turmaId, revision, live: _live }: Pro
 function AttendancePanel({ subgroupId, revision }: { subgroupId: string; revision: number }) {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [title, setTitle] = useState('')
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
-
+  // AbortController: descarta respostas que chegam após a desmontagem (o painel
+  // pode fechar no meio do fetch), evitando setState em componente morto.
+  const aliveRef = useRef(true)
   useEffect(() => {
-    let active = true
-    api.attendanceReport(subgroupId)
-      .then((data) => { if (active) { setRecords(data.sessoes); setTitle(data.subgrupo.nome); setError(null) } })
-      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Falha ao carregar presenças.') })
-    return () => { active = false }
-  }, [subgroupId, revision])
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.attendanceReport(subgroupId)
+      if (!aliveRef.current) return
+      setRecords(data.sessoes); setTitle(data.subgrupo.nome); setTotal(data.total); setError(null)
+    } catch (cause) {
+      if (aliveRef.current) setError(cause instanceof Error ? cause.message : 'Falha ao carregar presenças.')
+    }
+  }, [subgroupId])
+
+  useEffect(() => { void load() }, [load, revision])
 
   const forceCheckout = async (record: AttendanceRecord) => {
     try {
       await api.forceCheckout(subgroupId, record.aluno_id)
-      const data = await api.attendanceReport(subgroupId)
-      setRecords(data.sessoes)
+      await load()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Falha ao encerrar a sessão.')
+      if (aliveRef.current) setError(cause instanceof Error ? cause.message : 'Falha ao encerrar a sessão.')
     }
   }
 
@@ -203,6 +218,9 @@ function AttendancePanel({ subgroupId, revision }: { subgroupId: string; revisio
     <Card>
       <CardContent className="space-y-3 p-4">
         <h3 className="font-semibold">Presenças — {title}</h3>
+        {total > records.length && (
+          <p className="text-xs text-muted-foreground">Mostrando as {records.length} mais recentes de {total} sessões.</p>
+        )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {records.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma sessão registrada ainda.</p>

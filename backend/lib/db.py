@@ -757,6 +757,39 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    # Aulas (subgrupos) por turma.
+    "subgrupos": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        IndexModel([("turma_id", ASCENDING), ("nome", ASCENDING)], name="turma_nome"),
+
+    ],
+
+    # Sessões de presença (check-in/out). O índice parcial único impede a race
+    # condition do check-in: só pode existir UMA sessão aberta por aluno.
+    "sessoes_presenca": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        # Active-session lookups (dashboard, student view, sync).
+        IndexModel([("subgrupo_id", ASCENDING), ("saida", ASCENDING)], name="subgrupo_ativo"),
+
+        IndexModel([("aluno_id", ASCENDING), ("saida", ASCENDING)], name="aluno_ativo"),
+
+        # Attendance report (turma, mais recentes primeiro).
+        IndexModel([("turma_id", ASCENDING), ("entrada", DESCENDING)], name="turma_entrada"),
+
+        # Race-condition guard: at most one open session per aluno (saida: null only).
+        IndexModel(
+            [("aluno_id", ASCENDING), ("saida", ASCENDING)],
+            name="uma_sessao_aberta_por_aluno",
+            unique=True,
+            partialFilterExpression={"saida": None},
+        ),
+
+    ],
+
     # Notificações in-app: sino do usuário (não lidas primeiro, mais novas em cima).
     "notificacoes": [
 

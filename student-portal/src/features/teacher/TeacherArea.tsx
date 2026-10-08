@@ -80,6 +80,8 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
   const refresh = useCallback(() => setRevision((value) => value + 1), [])
   // WebSocket: bump geral + fórum (mensagens novas chegam sem recarregar).
   const onInvalidate = useCallback((event: RealtimeEvent) => {
+    // Seção "*" = polling de fallback (single_worker).
+    if (event.section === '*') { refresh(); setForumRevision((value) => value + 1); return }
     refresh()
     if (event.section === 'forum') setForumRevision((value) => value + 1)
   }, [refresh])

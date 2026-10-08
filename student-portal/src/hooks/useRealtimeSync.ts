@@ -27,6 +27,8 @@ export function useRealtimeSync({ audience = 'student', alunoId, enabled = true,
     let socket: WebSocket | null = null
     let reconnectTimer = 0
     let pingTimer = 0
+    let fallbackTimer = 0
+    let retryLiveTimer = 0
     let attempt = 0
     const connect = () => {
       if (stopped || isSingleWorkerRef.current) return
@@ -43,9 +45,18 @@ export function useRealtimeSync({ audience = 'student', alunoId, enabled = true,
             setStatus(payload.status)
             setMessage(payload.message ?? 'Conexão atualizada')
             if (payload.status === 'single_worker') {
+              // MongoDB sem change stream: em vez de desistir para sempre,
+              // degrada para polling de fallback (invalida todas as seções a
+              // cada 30s) e re-tenta o WebSocket a cada minuto — se o servidor
+              // voltar ao modo live, o cliente acompanha sem F5.
               isSingleWorkerRef.current = true
               window.clearInterval(pingTimer)
               socket?.close()
+              fallbackTimer = window.setInterval(() => {
+                onInvalidateRef.current({ type: 'invalidate', section: '*', updatedAt: new Date().toISOString(), mode: 'single_worker' })
+              }, 30000)
+              retryLiveTimer = window.setInterval(() => { isSingleWorkerRef.current = false; connect() }, 60000)
+              return
             }
             return
           }
@@ -72,7 +83,14 @@ export function useRealtimeSync({ audience = 'student', alunoId, enabled = true,
       socket.onerror = () => setStatus('reconnecting')
     }
     connect()
-    return () => { stopped = true; window.clearTimeout(reconnectTimer); window.clearInterval(pingTimer); socket?.close() }
+    return () => {
+      stopped = true
+      window.clearTimeout(reconnectTimer)
+      window.clearInterval(pingTimer)
+      window.clearInterval(fallbackTimer)
+      window.clearInterval(retryLiveTimer)
+      socket?.close()
+    }
   }, [alunoId, audience, enabled])
 
   return { status, message, lastUpdatedAt }

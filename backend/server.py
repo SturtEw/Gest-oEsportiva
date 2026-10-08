@@ -280,11 +280,28 @@ async def lifespan(_app: FastAPI):
 
         email_task = asyncio.create_task(_email_queue_worker(email_stop), name="email-queue-worker")
 
+        # Worker de sessões abandonadas: encerra check-ins órfãos (navegador
+        # fechado sem 'Sair') a cada 15 minutos, com o tempo calculado no banco.
+        async def sessions_cleanup_worker():
+            from routers.subgroups import close_stale_sessions
+            while True:
+                await asyncio.sleep(15 * 60)
+                try:
+                    closed = await close_stale_sessions()
+                    if closed:
+                        logger.info('{"event": "stale_sessions_closed", "count": %d}', closed)
+                except Exception:
+                    logger.exception("[sessions-cleanup] Falha ao encerrar sessões abandonadas.")
+
+        sessions_task = asyncio.create_task(sessions_cleanup_worker(), name="sessions-cleanup-worker")
+
         try:
             yield
 
         finally:
             email_stop.set()
+
+            sessions_task.cancel()
 
             try:
                 await asyncio.wait_for(email_task, timeout=5.0)
