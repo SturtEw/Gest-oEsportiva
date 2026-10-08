@@ -5,20 +5,21 @@
  * - Detecta Android por navigator.userAgent (Desktop e iOS nunca veem —
  *   iOS não instala APK; a alternativa lá seria PWA/Add to Home Screen).
  * - "X" grava timestamp no localStorage; o banner fica oculto por 7 dias.
- * - O botão usa APP_APK_URL (constante única para trocar o link quando o
- *   .apk for publicado).
+ * - O APK AINDA NÃO EXISTE: o botão está desativado ("Em breve") e apenas
+ *   informa o usuário. Quando o .apk for publicado, defina APP_APK_URL e
+ *   volte o botão para o handler `download` (guardado em comentário).
  *
- * PWA (futuro): para migrar de APK para PWA, escute `beforeinstallprompt`,
+ * PWA (futuro): para migrar de APK para PWA, escute `beforeinstall`,
  * guarde o evento num ref/state e faça o botão chamar `event.prompt()`
  * (comentado no handler abaixo). O banner então deveria aparecer também
  * quando o app não está standalone — ver `display-mode` media query.
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Smartphone, X } from 'lucide-react'
+import { Download, Hourglass, Smartphone, X } from 'lucide-react'
 
-/** Link direto do .apk publicado. Troque aqui (ou derive de env no build). */
-const APP_APK_URL = '/app/gestao-esportiva.apk'
+/** Link direto do .apk publicado. Preencha quando o arquivo existir. */
+const APP_APK_URL = ''
 
 const DISMISS_KEY = 'app-banner-dismissed-at'
 const DISMISS_DAYS = 7
@@ -62,6 +63,7 @@ export function AppDownloadBanner() {
   }, [])
 
   const download = useCallback(() => {
+    if (!APP_APK_URL) return // Sem APK publicado: o botão fica inativo.
     // TODO(PWA): quando o sistema virar PWA, substituir este handler por:
     //   const deferred = installPromptRef.current   // evento beforeinstallprompt capturado no useEffect:
     //   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPromptRef.current = e })
@@ -75,6 +77,8 @@ export function AppDownloadBanner() {
     anchor.click()
     anchor.remove()
   }, [])
+
+  const apkReady = Boolean(APP_APK_URL)
 
   if (!visible) return null
 
@@ -94,10 +98,14 @@ export function AppDownloadBanner() {
         <button
           type="button"
           onClick={download}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#234E40] px-3 py-2 text-xs font-bold text-white transition active:scale-95"
+          disabled={!apkReady}
+          title={apkReady ? 'Baixar o aplicativo' : 'O aplicativo ainda não está disponível'}
+          className={apkReady
+            ? 'flex shrink-0 items-center gap-1.5 rounded-xl bg-[#234E40] px-3 py-2 text-xs font-bold text-white transition active:scale-95'
+            : 'flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-xl bg-[#EAF0E5] px-3 py-2 text-xs font-bold text-[#66806D]'}
         >
-          <Download aria-hidden="true" className="size-4" />
-          Baixar APK
+          {apkReady ? <Download aria-hidden="true" className="size-4" /> : <Hourglass aria-hidden="true" className="size-4" />}
+          {apkReady ? 'Baixar APK' : 'Em breve'}
         </button>
         <button
           type="button"
