@@ -35,6 +35,7 @@ from pymongo.errors import DuplicateKeyError
 
 from lib.dates import now_utc
 from lib.db import db
+from lib.guards import format_duration, require_teacher
 from lib.impersonation import get_current_user_with_impersonation
 from lib.portal_access import get_authorized_aluno
 from lib.realtime import publish_class_event, publish_user_event
@@ -48,6 +49,10 @@ SECTION = "subgroups"
 LIST_LIMIT = 200
 
 
+# Alias local; a regra vive em lib/guards.py.
+_require_teacher = require_teacher
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def _new_id() -> str:
     return uuid.uuid4().hex
@@ -58,11 +63,6 @@ def _clean(value: str | None) -> str | None:
         return None
     cleaned = " ".join(value.split())
     return cleaned or None
-
-
-def _require_teacher(user: User) -> None:
-    if user.tipo != "professor" or user.status != "ativo":
-        raise HTTPException(status_code=403, detail="Acesso disponível somente para professores aprovados")
 
 
 async def _owned_class(user: User, turma_id: str) -> dict[str, Any]:
@@ -110,13 +110,8 @@ async def _notify(subgrupo: dict[str, Any], professor_id: str | None) -> None:
 
 
 def _duration_text(seconds: int) -> str:
-    minutes, sec = divmod(max(0, seconds), 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes:02d}min"
-    if minutes:
-        return f"{minutes}min {sec:02d}s"
-    return f"{sec}s"
+    """Compat: formatação compartilhada em lib/guards.py."""
+    return format_duration(seconds) or "0s"
 
 
 def _session_view(sessao: dict[str, Any]) -> dict[str, Any]:

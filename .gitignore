@@ -50,3 +50,9 @@ htmlcov/
 
 # Kombai scratch (QA screenshots, seed scripts, local DB dumps)
 .kombai/tmp/
+.kombai/debug/
+.kombai/canvas/
+# Scratch/debug na raiz (screenshots de QA, scripts de sondagem, logs locais)
+_*.*
+playground-*.mongodb.js
+test.txt

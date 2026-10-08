@@ -24,6 +24,7 @@ from pymongo.errors import DuplicateKeyError
 
 from lib.dates import now_utc
 from lib.db import db
+from lib.guards import require_teacher
 from lib.impersonation import get_current_user_with_impersonation
 from lib.realtime import publish_event, publish_user_event
 from lib.security import get_current_user
@@ -95,9 +96,8 @@ def _require_student(user: User) -> str:
     return user.aluno_id
 
 
-def _require_teacher(user: User) -> None:
-    if user.tipo != "professor" or user.status != "ativo":
-        raise HTTPException(status_code=403, detail="Acesso disponível somente para professores aprovados")
+# Alias local; a regra vive em lib/guards.py.
+_require_teacher = require_teacher
 
 
 async def _teacher_classes(user: User) -> list[dict[str, Any]]:

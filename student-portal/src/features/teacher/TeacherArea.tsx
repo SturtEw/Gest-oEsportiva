@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Timer, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
@@ -58,6 +58,9 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
   const [students, setStudents] = useState<Student[]>([])
   const [activities, setActivities] = useState<ActivitySummary[]>([])
   const [loading, setLoading] = useState(true)
+  // "Já houve um primeiro load?": evita ler classes/students do closure do efeito
+  // (valor stale após o primeiro render). Só o primeiro load mostra skeletons.
+  const hasLoadedRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [activeStudent, setActiveStudent] = useState<Student | null>(null)
   const [messages, setMessages] = useState<PublicMessage[]>([])
@@ -102,9 +105,9 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
     // Only the first load shows skeletons; later revisions (realtime invalidation,
     // award points, refresh button) revalidate in place — full-skeleton swaps were
     // the "screen flash" reported after giving points or on every reconnect.
-    setLoading((wasLoading) => wasLoading || (classes.length === 0 && students.length === 0))
+    setLoading(!hasLoadedRef.current)
     Promise.all([api.teacherDashboard(), api.teacherStudents()])
-      .then(([dashboard, roster]) => { if (active) { setClasses(dashboard.classes); setStudents(roster.students) } })
+      .then(([dashboard, roster]) => { if (active) { setClasses(dashboard.classes); setStudents(roster.students); hasLoadedRef.current = true } })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Não foi possível carregar suas turmas.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }

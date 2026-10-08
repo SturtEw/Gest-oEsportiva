@@ -73,6 +73,10 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
   const onInvalidate = useCallback(() => refresh(), [refresh])
   const connection = useRealtimeSync({ audience: 'admin', enabled: true, onInvalidate })
 
+  // "Já houve um primeiro load?": ler classes/students do closure do efeito
+  // devolve valor stale após o primeiro render (deps [revision, search]).
+  const hasLoadedRef = useRef(false)
+
   useEffect(() => {
     let active = true
     // Only the very first load shows skeletons and surfaces fetch errors; later
@@ -80,7 +84,7 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
     // revalidate in place. A background hiccup used to paint the whole screen
     // with "Verifique sua conexão" and flash skeletons right after a successful
     // action — the class was created, the UI just threw the refetch failure at it.
-    setLoading((wasLoading) => wasLoading || (classes.length === 0 && students.length === 0))
+    setLoading(!hasLoadedRef.current)
     Promise.all([
       api.adminSummary(),
       api.teacherApplications(),
@@ -99,12 +103,13 @@ export function AdminWorkspace({ adminName, sessionUser, onLogout }: { adminName
         setTeachers(nextTeachers.teachers)
         setTeacherWorkspace(nextWorkspace.classes)
         if (googleConfig?.client_id) setGoogleClientId(googleConfig.client_id)
+        hasLoadedRef.current = true
       })
       .catch((cause: unknown) => {
         if (!active) return
         // Fail loudly only when there is nothing on screen yet; a refetch failure
         // after a successful mutation must not erase the success notice.
-        if (classes.length === 0 && students.length === 0) {
+        if (!hasLoadedRef.current) {
           setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os dados administrativos.')
         }
       })

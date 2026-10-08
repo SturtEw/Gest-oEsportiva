@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from lib.dates import now_utc
 from lib.db import db
+from lib.guards import require_teacher
 from lib.notifications import notify_student
 from lib.impersonation import get_current_user_with_impersonation
 from lib.portal_access import get_authorized_aluno
@@ -156,9 +157,8 @@ class MatchResult(BaseModel):
 
 
 # ─── Guards and loaders ───────────────────────────────────────────────────────
-def _require_teacher(user: User) -> None:
-    if user.tipo != "professor" or user.status != "ativo":
-        raise HTTPException(status_code=403, detail="Acesso disponível somente para professores aprovados")
+# Alias local; a regra vive em lib/guards.py.
+_require_teacher = require_teacher
 
 
 async def _teacher_classes(user: User) -> dict[str, dict[str, Any]]:

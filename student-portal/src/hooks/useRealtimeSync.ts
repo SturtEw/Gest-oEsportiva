@@ -83,8 +83,26 @@ export function useRealtimeSync({ audience = 'student', alunoId, enabled = true,
       socket.onerror = () => setStatus('reconnecting')
     }
     connect()
+    // Suspensão do SO e troca de rede deixam o socket "zumbi" (readyState OPEN
+    // mas morto) sem disparar onclose. Ao voltar a aba ou recuperar a conexão,
+    // força um reconnect imediato se o socket não estiver de fato aberto.
+    const revive = () => {
+      if (stopped || isSingleWorkerRef.current) return
+      if (document.visibilityState !== 'visible') return
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
+      window.clearTimeout(reconnectTimer)
+      attempt = 0
+      isSingleWorkerRef.current = false
+      window.clearInterval(fallbackTimer)
+      window.clearInterval(retryLiveTimer)
+      connect()
+    }
+    window.addEventListener('online', revive)
+    document.addEventListener('visibilitychange', revive)
     return () => {
       stopped = true
+      window.removeEventListener('online', revive)
+      document.removeEventListener('visibilitychange', revive)
       window.clearTimeout(reconnectTimer)
       window.clearInterval(pingTimer)
       window.clearInterval(fallbackTimer)

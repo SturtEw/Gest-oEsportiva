@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from models.models import User
 from routers import admin as admin_router
-from tests.fake_mongo import FakeCollection, enrollment_db
+from tests.fake_mongo import FakeClient, FakeCollection, enrollment_db
 
 ROOT = User(id="root-1", nome="Admin Raiz", email="raiz@escola.com", tipo="admin", status="ativo", is_root_admin=True)
 TEACHER = User(id="prof-1", nome="Ana Souza", email="ana@escola.com", tipo="professor", status="ativo")
@@ -25,6 +25,16 @@ def db(monkeypatch):
             {"id": "a-2", "nome": "Aluno Dois", "turma_id": "t-1"},
         ]),
         admin_audit=FakeCollection(),
+        # Coleções que a cascata de exclusão precisa varrer (uma linha órfã cada).
+        subgrupos=FakeCollection([{"id": "sg-1", "turma_id": "t-1"}]),
+        sessoes_presenca=FakeCollection([{"id": "s-1", "turma_id": "t-1"}]),
+        forum_mensagens=FakeCollection([{"id": "f-1", "turma_id": "t-1"}]),
+        atividades=FakeCollection([{"id": "at-1", "turma_id": "t-1"}]),
+        comunicados=FakeCollection([{"id": "c-1", "turma_id": "t-1", "status": "enviado"}]),
+        agenda_aulas=FakeCollection([{"id": "ag-1", "turma_id": "t-1"}]),
+        chamadas=FakeCollection([{"id": "ch-1", "turma_id": "t-1"}]),
+        solicitacoes_turma=FakeCollection([{"id": "sl-1", "turma_id": "t-1"}]),
+        turma_convites=FakeCollection([{"id": "cv-1", "turma_id": "t-1"}]),
     )
     events = []
 
@@ -32,6 +42,7 @@ def db(monkeypatch):
         events.append(args)
 
     monkeypatch.setattr(admin_router, "db", fake)
+    monkeypatch.setattr(admin_router, "client", FakeClient())
     monkeypatch.setattr(admin_router, "publish_admin_event", record)
     monkeypatch.setattr(admin_router, "publish_user_event", record)
     monkeypatch.setattr(admin_router, "publish_event", record)
@@ -57,6 +68,18 @@ async def test_delete_removes_class_and_unlinks_members(db):
     # Realtime invalidations for admin, teacher and each released student.
     assert {("classes",), ("unassigned_students",), ("prof-1", "classes")} <= set(db.events)
     assert {(member, "portal") for member in ("a-1", "a-2")} <= set(db.events)
+
+
+async def test_delete_purges_every_turma_id_collection(db):
+    """No document indexed by turma_id survives the deletion (no orphan data)."""
+    await admin_router.delete_class("t-1", user=ROOT)
+
+    for name in (
+        "subgrupos", "sessoes_presenca", "forum_mensagens", "atividades", "comunicados",
+        "agenda_aulas", "chamadas", "solicitacoes_turma", "turma_convites",
+    ):
+        remaining = getattr(db, name).documents
+        assert remaining == [], f"{name} ainda tem documentos órfãos: {remaining}"
 
 
 async def test_delete_unknown_class_returns_404(db):

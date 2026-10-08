@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lib.db import db
+from lib.guards import format_duration, require_teacher
 from lib.security import get_current_user
 from models.models import User
 from lib.dates import now_utc
@@ -22,9 +23,8 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 MAX_DAYS = 90
 
 
-def _require_teacher(user: User) -> None:
-    if user.tipo != "professor" or user.status != "ativo":
-        raise HTTPException(status_code=403, detail="Acesso disponível somente para professores aprovados")
+# Alias local para manter os call-sites enxutos; a regra vive em lib/guards.py.
+_require_teacher = require_teacher
 
 
 async def _owned_turma_ids(user: User, turma_id: str | None) -> list[str]:
@@ -94,20 +94,8 @@ async def analytics_resumo(turma_id: str | None = None, subgrupo_id: str | None 
     ]
     result = await (await db.sessoes_presenca.aggregate(pipeline)).to_list(length=1)
     base = result[0] if result else {"alunos_hoje": 0, "sessoes_hoje": 0, "sessoes_7d": 0, "total_sessoes": 0, "tempo_medio_segundos": None}
-    base["tempo_medio"] = _fmt_duration(base["tempo_medio_segundos"])
+    base["tempo_medio"] = format_duration(base["tempo_medio_segundos"])
     return base
-
-
-def _fmt_duration(seconds: int | None) -> str | None:
-    if seconds is None:
-        return None
-    minutes, sec = divmod(max(0, int(seconds)), 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h {minutes:02d}min"
-    if minutes:
-        return f"{minutes}min {sec:02d}s"
-    return f"{sec}s"
 
 
 # ─── A) Movimentação diária (dias do mês) ────────────────────────────────────

@@ -24,7 +24,7 @@ def _require_root(user: User) -> None:
         raise HTTPException(status_code=403, detail="Apenas o administrador raiz pode gerenciar esta área")
 
 
-async def _audit(user: User, action: str, subject_id: str, metadata: dict[str, Any] | None = None) -> None:
+async def _audit(user: User, action: str, subject_id: str, metadata: dict[str, Any] | None = None, session: Any | None = None) -> None:
     await db.admin_audit.insert_one({
 
         "id": str(uuid.uuid4()),
@@ -39,7 +39,7 @@ async def _audit(user: User, action: str, subject_id: str, metadata: dict[str, A
 
         "created_at": now_utc(),
 
-    })
+    }, session=session)
 
 
 class ReviewDecision(BaseModel):
@@ -404,25 +404,46 @@ async def delete_class(turma_id: str, user: User = Depends(get_current_user)):
     """
     _require_root(user)
 
-    turma = await db.turmas.find_one({"id": turma_id}, {"_id": 0, "id": 1, "nome": 1, "alunos_ids": 1, "professor_id": 1})
+    async with client.start_session() as session:
+        async with await session.start_transaction():
+            try:
+                turma = await db.turmas.find_one({"id": turma_id}, {"_id": 0, "id": 1, "nome": 1, "alunos_ids": 1, "professor_id": 1}, session=session)
 
-    if not turma:
-        raise HTTPException(status_code=404, detail="Turma não encontrada")
+                if not turma:
+                    raise HTTPException(status_code=404, detail="Turma não encontrada")
 
-    member_ids = list(turma.get("alunos_ids", []))
+                member_ids = list(turma.get("alunos_ids", []))
 
-    # Cascata: aulas (subgrupos) e sessões de presença morrem com a turma —
-    # sem isso ficam órfãos para sempre, poluindo relatórios e contagens.
-    await db.subgrupos.delete_many({"turma_id": turma_id})
+                # Cascata: TODAS as coleções indexadas por turma_id morrem com a turma.
+                # Sem isso os documentos ficam órfãos para sempre (chat, atividades,
+                # comunicados, agenda, chamadas, solicitações e convites), poluindo
+                # relatórios e aparecendo em consultas por turma_id.
+                for collection in (
+                    db.subgrupos,
+                    db.sessoes_presenca,
+                    db.forum_mensagens,
+                    db.atividades,
+                    db.comunicados,
+                    db.agenda_aulas,
+                    db.chamadas,
+                    db.solicitacoes_turma,
+                    db.turma_convites,
+                ):
+                    await collection.delete_many({"turma_id": turma_id}, session=session)
 
-    await db.sessoes_presenca.delete_many({"turma_id": turma_id})
+                if member_ids:
+                    await db.alunos.update_many({"id": {"$in": member_ids}}, {"$set": {"turma_id": None}}, session=session)
 
-    if member_ids:
-        await db.alunos.update_many({"id": {"$in": member_ids}}, {"$set": {"turma_id": None}})
+                await db.turmas.delete_one({"id": turma_id}, session=session)
 
-    await db.turmas.delete_one({"id": turma_id})
+                await _audit(user, "class_deleted", turma_id, {"nome": turma["nome"], "students_unlinked": len(member_ids)}, session=session)
 
-    await _audit(user, "class_deleted", turma_id, {"nome": turma["nome"], "students_unlinked": len(member_ids)})
+                await session.commit_transaction()
+
+            except Exception:
+                await session.abort_transaction()
+
+                raise
 
     # Post-transaction events (outside transaction to avoid failures)
     await publish_admin_event("classes")

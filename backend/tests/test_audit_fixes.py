@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from models.models import User
 from routers import admin as admin_router
 from routers import subgroups as router
-from tests.fake_mongo import FakeCollection, enrollment_db
+from tests.fake_mongo import FakeClient, FakeCollection, enrollment_db
 
 PROF = User(id="prof-1", nome="Ana Souza", email="ana@escola.com", tipo="professor", status="ativo")
 ALUNO = User(id="user-aluno", nome="Aluno Conta", email="aluno@escola.com", tipo="aluno", status="ativo", aluno_id="a-1")
@@ -24,6 +24,13 @@ def db(monkeypatch):
         sessoes_presenca=FakeCollection(unique=[("aluno_id", {"saida": None})]),
         admin_audit=FakeCollection(),
         admin_notifications=FakeCollection(),
+        forum_mensagens=FakeCollection(),
+        atividades=FakeCollection(),
+        comunicados=FakeCollection(),
+        agenda_aulas=FakeCollection(),
+        chamadas=FakeCollection(),
+        solicitacoes_turma=FakeCollection(),
+        turma_convites=FakeCollection(),
     )
 
     async def record(*args):
@@ -31,6 +38,7 @@ def db(monkeypatch):
 
     monkeypatch.setattr(router, "db", fake)
     monkeypatch.setattr(admin_router, "db", fake)
+    monkeypatch.setattr(admin_router, "client", FakeClient())
     monkeypatch.setattr(router, "publish_class_event", record)
     monkeypatch.setattr(router, "publish_user_event", record)
     return fake

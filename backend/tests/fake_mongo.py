@@ -173,7 +173,7 @@ class FakeCollection:
                     return True
         return False
 
-    async def find_one(self, query: dict, projection: dict | None = None) -> dict | None:
+    async def find_one(self, query: dict, projection: dict | None = None, session=None, **_):
         for document in self.documents:
             if matches(document, query):
                 return copy.deepcopy(document)
@@ -185,13 +185,13 @@ class FakeCollection:
     async def count_documents(self, query: dict) -> int:
         return sum(1 for doc in self.documents if matches(doc, query))
 
-    async def insert_one(self, document: dict):
+    async def insert_one(self, document: dict, session=None, **_):
         if self._violates_unique(document):
             raise DuplicateKeyError("duplicate key")
         self.documents.append(copy.deepcopy(document))
         return SimpleNamespace(inserted_id=document.get("id"))
 
-    async def update_one(self, query: dict, update: dict):
+    async def update_one(self, query: dict, update: dict, session=None, **_):
         for document in self.documents:
             if matches(document, query):
                 updated = copy.deepcopy(document)
@@ -204,7 +204,7 @@ class FakeCollection:
                 return SimpleNamespace(matched_count=1, modified_count=int(changed))
         return SimpleNamespace(matched_count=0, modified_count=0)
 
-    async def find_one_and_update(self, query: dict, update: dict, return_document=None, **_):
+    async def find_one_and_update(self, query: dict, update: dict, return_document=None, session=None, **_):
         """Mirrors ReturnDocument.AFTER when requested, BEFORE otherwise."""
         for document in self.documents:
             if matches(document, query):
@@ -213,19 +213,19 @@ class FakeCollection:
                 return copy.deepcopy(document) if return_document else before
         return None
 
-    async def update_many(self, query: dict, update: dict):
+    async def update_many(self, query: dict, update: dict, session=None, **_):
         targets = [doc for doc in self.documents if matches(doc, query)]
         for document in targets:
             _apply(document, update)
         return SimpleNamespace(matched_count=len(targets), modified_count=len(targets))
 
-    async def delete_many(self, query: dict):
+    async def delete_many(self, query: dict, session=None, **_):
         kept = [doc for doc in self.documents if not matches(doc, query)]
         deleted = len(self.documents) - len(kept)
         self.documents = kept
         return SimpleNamespace(deleted_count=deleted)
 
-    async def delete_one(self, query: dict):
+    async def delete_one(self, query: dict, session=None, **_):
         for index, document in enumerate(self.documents):
             if matches(document, query):
                 del self.documents[index]
@@ -247,3 +247,44 @@ def enrollment_db(**collections: FakeCollection) -> SimpleNamespace:
     }
     defaults.update(collections)
     return SimpleNamespace(**defaults)
+
+
+
+class _FakeTransaction:
+    """Stand-in for an AsyncClientSession transaction (commit/abort are no-ops)."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+    async def commit_transaction(self):
+        return None
+
+    async def abort_transaction(self):
+        return None
+
+
+class _FakeSession:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+    async def start_transaction(self):
+        return _FakeTransaction()
+
+    async def commit_transaction(self):
+        return None
+
+    async def abort_transaction(self):
+        return None
+
+
+class FakeClient:
+    """Minimal async client exposing start_session()/start_transaction()."""
+
+    def start_session(self) -> _FakeSession:
+        return _FakeSession()
