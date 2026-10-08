@@ -25,6 +25,7 @@ import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, ForumView, TeacherWorkoutsView, prefetchTeacherView } from './sections'
 import { ProfessorDashboardGroups } from '@/features/subgroups/ProfessorDashboardGroups'
+import { AnalyticsPanel } from '@/features/subgroups/AnalyticsPanel'
 import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
 import { AppDownloadBanner } from '@/components/AppDownloadBanner'
@@ -414,7 +415,14 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
 
                   {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
 
-                  {view === 'aulas' && <ProfessorDashboardGroups turmaId={classes[0]?.id ?? ''} revision={revision} live={connection.status === 'live'} />}
+                  {view === 'aulas' && (
+                    <div className="space-y-8">
+                      <ProfessorDashboardGroups turmaId={classes[0]?.id ?? ''} revision={revision} live={connection.status === 'live'} />
+                      {classes[0] && (
+                        <AnalyticsPanel turmaId={classes[0].id} alunos={students.filter((student) => student.turma_id === classes[0].id).map((student) => ({ id: student.id, nome: student.nome }))} />
+                      )}
+                    </div>
+                  )}
 
         {view === 'workouts' && <TeacherWorkoutsView students={students} revision={revision} readOnly={isImpersonating} onNotice={setNotice} />}
 
