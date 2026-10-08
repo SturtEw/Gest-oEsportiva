@@ -118,6 +118,13 @@ async def my_forum_classes(user: User = Depends(get_current_user_with_impersonat
                 "modalidade": item.get("modalidade"),
                 "ano": item.get("ano"),
                 "total_membros": len(item.get("alunos_ids") or []),
+                "subgrupos": [
+                    {"id": sub["id"], "nome": sub.get("nome") or "Aula"}
+                    async for sub in db.subgrupos.find(
+                        {"turma_id": item["id"], "status": "ativo"},
+                        {"_id": 0, "id": 1, "nome": 1},
+                    ).sort("nome", 1)
+                ],
             }
             for item in classes
         ]

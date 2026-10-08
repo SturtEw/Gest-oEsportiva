@@ -25,6 +25,7 @@ import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, ForumView, TeacherWorkoutsView, prefetchTeacherView } from './sections'
 import { ProfessorDashboardGroups } from '@/features/subgroups/ProfessorDashboardGroups'
+import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
 
 type View = 'dashboard' | 'turmas' | 'atividades' | 'aulas' | 'workouts' | 'prescribed' | 'convites' | 'alunos' | 'forum' | 'agenda' | 'conta'
@@ -83,6 +84,11 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
     if (event.section === 'forum') setForumRevision((value) => value + 1)
   }, [refresh])
   const connection = useRealtimeSync({ audience: 'teacher', enabled: !isImpersonating, onInvalidate })
+
+  // Fórum flutuante também para o professor, em todas as telas.
+  const forumWidget = !isImpersonating ? (
+    <ForumWidget myUserId={userId} myRole="professor" live={connection.status === 'live'} revision={forumRevision} />
+  ) : null
   // Approving a request changes the roster, so mutations bump the shared revision.
   const enrollment = useTeacherEnrollment({ revision, onChanged: refresh })
 
@@ -231,6 +237,7 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
 
   return (
     <>
+      {forumWidget}
       <AppShell
         nav={nav}
         active={view}

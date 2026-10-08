@@ -11,12 +11,13 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { HomeDashboard } from '@/features/home/HomeDashboard'
 import {
   AchievementSection, AnnouncementsSection, AssessmentSection, AttendanceSection, ClassSummary, EnrollmentHome,
-  QuestionThread, RecordsSection, StudentActivitiesSection, StudentCheckIn, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection, ForumView,
+  QuestionThread, RecordsSection, StudentActivitiesSection, StudentCheckIn, StudentWorkoutsSection, TreinamentosSection, prefetchStudentSection,
 } from './sections'
 import { useQuestionThread } from '@/hooks/useQuestionThread'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useImpersonation } from '@/hooks/useImpersonation'
 import { useStudentPortal } from '@/hooks/useStudentPortal'
+import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
 import { initials } from '@/lib/formatters'
 import type { LinkedChild, PortalSection, SessionUser } from '@/lib/types'
@@ -101,6 +102,11 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     if (event.section === 'portal') portalRefreshRef.current()
   }, [])
   const connection = useRealtimeSync({ audience: 'student', alunoId: studentId, enabled: !isImpersonating, onInvalidate })
+
+  // Fórum flutuante: FAB presente em todas as telas do aluno (não é uma seção).
+  const forumWidget = !isImpersonating ? (
+    <ForumWidget myUserId={user.id} myRole="aluno" live={connection.status === 'live'} revision={forumRevision} />
+  ) : null
   const goTo = useCallback((section: PortalSection) => { setActiveSection(section); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }, [])
   const currentSection = sections.find((section) => section.id === activeSection) ?? sections[0]
   const snapshot = portal.snapshot
@@ -134,12 +140,13 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       case 'registros': return <RecordsSection incidents={snapshot.ocorrencias} justifications={snapshot.justificativas} />
       case 'comunicados': return <AnnouncementsSection announcements={snapshot.comunicados} />
       case 'duvidas': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">As dúvidas estão disponíveis apenas para consulta nesta visualização.</p> : <QuestionThread alunoId={studentId} turma={snapshot.turma} professorNome={snapshot.professor_nome} sessionUser={user} messages={questions.messages} loading={questions.loading} error={questions.error} onSend={questions.send} onRetry={questions.retry} onRefresh={questions.refresh} />
-      case 'forum': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">O fórum está disponível apenas para consulta nesta visualização.</p> : <ForumView myUserId={user.id} myRole="aluno" live={connection.status === 'live'} revision={forumRevision} />
+      case 'forum': return isImpersonating ? <p className="rounded-xl bg-amber-50 p-4 text-sm">O fórum está disponível apenas para consulta nesta visualização.</p> : <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">O fórum agora fica no botão de chat flutuante, no canto da tela. Ele está disponível em todas as telas do portal.</p>
       case 'conta': return <AccountManagement sessionUser={{ nome: user.nome, email: user.email, tipo: user.tipo, tem_senha: user.tem_senha }} onAccountChanged={refresh} onSignedOut={onLogout} />
     }
   }
 
   return <div className="min-h-screen bg-background text-foreground">
+    {forumWidget}
     <div className="min-h-screen lg:flex">
       <aside className="sticky top-0 hidden h-screen w-[252px] shrink-0 flex-col bg-sidebar px-4 py-6 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-3 px-2"><span className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 font-display text-sm font-extrabold text-[#D9EFAB]">GE</span><span><span className="block font-display text-[13px] font-extrabold tracking-wide">GESTÃO ESPORTIVA</span><span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-white/55">escolar</span></span></div>

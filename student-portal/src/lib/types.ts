@@ -29,7 +29,16 @@ export interface StudentClassDetailed extends StudentClass { professor_id: strin
 export interface MyClassesResponse { turmas: StudentClassDetailed[]; turma_id: string | null }
 
 // ---------- Fórum de turma ----------
-export interface ForumClassSummary { id: string; nome: string; modalidade: string | null; ano: number | null; total_membros: number }
+export interface ForumSubgroupBrief { id: string; nome: string }
+export interface ForumClassSummary {
+  id: string
+  nome: string
+  modalidade: string | null
+  ano: number | null
+  total_membros: number
+  /** Subgrupos (aulas) da turma, para o widget flutuante do fórum. */
+  subgrupos?: ForumSubgroupBrief[]
+}
 export interface ForumMessage { id: string; autor_id: string; autor_nome: string; autor_tipo: 'professor' | 'aluno'; autor_avatar: string | null; texto: string; criado_em: string }
 export interface ForumMessagesResponse { mensagens: ForumMessage[]; has_more: boolean }
 
