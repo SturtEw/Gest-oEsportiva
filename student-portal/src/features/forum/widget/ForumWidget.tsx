@@ -121,14 +121,12 @@ function ClassList({
   error,
   onSelect,
   onSelectAi,
-  onClose,
 }: {
   classes: ForumClassSummary[]
   loading: boolean
   error: string | null
   onSelect: (classId: string, name: string, subgroupId: string | null, subgroupName: string | null) => void
   onSelectAi: () => void
-  onClose: () => void
 }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -143,16 +141,8 @@ function ClassList({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between gap-2 border-b border-border/70 bg-[#234E40] px-4 py-3 text-white">
-        <div className="flex items-center gap-2">
-          <MessagesSquare className="size-5" />
-          <h2 className="font-display text-base font-bold">Fórum</h2>
-        </div>
-        <button type="button" aria-label="Fechar fórum" onClick={onClose} className="rounded-full p-1.5 transition hover:bg-white/15">
-          <X className="size-5" />
-        </button>
-      </header>
-
+      {/* Header NÃO mora aqui: o ForumWidget (dono da janela) já desenha o único
+          header com o título, tela cheia e fechar. Ter um aqui duplicava a barra. */}
       <div className="border-b border-border/70 p-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -473,7 +463,6 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
                   error={error}
                   onSelect={(classId, name, subgroupId, subgroupName) => setSelected({ classId, name, subgroupId, subgroupName })}
                   onSelectAi={() => { setSelected(null); setAiOpen(true) }}
-                  onClose={close}
                 />
               </div>
             </div>
