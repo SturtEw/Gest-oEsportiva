@@ -107,10 +107,19 @@ export function useDashboardLayout(enabled: boolean): DashboardLayoutApi {
   // Marks the last value we know is on the server, so a no-op change (e.g. a re-render
   // that produces the same layout) does not trigger a pointless write.
   const savedRef = useRef<string>('')
+  // False until the first GET settles. Guards every write: before it flips, the layout in
+  // state is this component's default, not the professor's, and persisting it would
+  // destroy their saved panel.
+  const loadedRef = useRef(false)
 
   const flush = useCallback(async () => {
     const payload = pendingRef.current
     if (!payload) return
+    // Never write before the first load has come back. React StrictMode mounts, unmounts
+    // and remounts in development, so the unmount flush below would otherwise race the
+    // in-flight GET and persist this component's default starter layout over whatever the
+    // professor had actually saved. `loadedRef` is the gate that makes that impossible.
+    if (!loadedRef.current) return
     pendingRef.current = null
     const serialised = JSON.stringify(payload)
     if (serialised === savedRef.current) return
@@ -152,7 +161,13 @@ export function useDashboardLayout(enabled: boolean): DashboardLayoutApi {
         savedRef.current = result.layout ? JSON.stringify(resolved) : ''
       })
       .catch(() => { if (active) setLayout(defaultLayout()) })
-      .finally(() => { if (active) setReady(true) })
+      .finally(() => {
+        if (!active) return
+        // Only now may anything be written back: from here on the layout in state is the
+        // professor's (or a deliberate default), never a placeholder racing the request.
+        loadedRef.current = true
+        setReady(true)
+      })
     return () => { active = false }
   }, [enabled])
 
