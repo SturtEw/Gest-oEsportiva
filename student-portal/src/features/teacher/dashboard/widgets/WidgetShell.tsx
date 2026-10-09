@@ -37,7 +37,10 @@ export function WidgetShell({
   return (
     <div
       className={cn(
-        'flex h-full flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border',
+        // w-full max-w-full box-border: the card is always exactly its grid cell, never
+        // the sum of its content. A widget that could grow past its column is what pushed
+        // the page wide and displaced the fixed bottom bar.
+        'box-border flex h-full w-full max-w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border',
         // A visible ring while editing tells the professor which boxes are movable
         // without changing any content.
         editing && 'ring-2 ring-primary/40',
@@ -72,9 +75,11 @@ export function WidgetShell({
         ) : null}
       </div>
 
-      {/* min-h-0 is required for overflow to work inside a flex column: without it the
-          child refuses to shrink below its content height and the card grows. */}
-      <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
+      {/* min-h-0 lets the body shrink below its content so `overflow-auto` can actually
+          scroll; the matching min-w-0 does the same horizontally. Without min-w-0 a wide
+          child (the students table has min-w-[560px]) stretches the flex item, the card
+          grows past its grid cell, and the page gains a horizontal scrollbar. */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto p-4">{children}</div>
     </div>
   )
 }

@@ -75,8 +75,12 @@ export function StudentOverviewTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border">
-      <div className="overflow-x-auto">
+    // min-w-0 at every level: this subtree contains a 560px-wide table, and without a
+    // shrinkable ancestor the flex parent grows to fit it instead of letting the inner
+    // `overflow-x-auto` do its job. The table then scrolls inside the widget, which is
+    // the intent — the card must never widen the page to accommodate it.
+    <div className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl bg-card ring-1 ring-border">
+      <div className="w-full max-w-full min-w-0 overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse text-sm">
           <caption className="sr-only">Visão geral dos alunos por turma, com frequência, média e dúvidas pendentes</caption>
           <thead>

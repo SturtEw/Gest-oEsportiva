@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from 'cn'
 import type { TeacherOverview } from '@/lib/types'
 import type { WidgetInstance, WidgetKind, WidgetLayout } from './layout-types'
-import { BREAKPOINT_COLS, BREAKPOINT_MARGIN, containerPaddingFor, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, BREAKPOINT_MARGIN_Y, containerPaddingFor, packLayout } from './layout-derive'
 import { MetricsHeaderPanel } from './MetricsHeaderPanel'
 import type { KpiTile } from './KpiCard'
 import { useDashboardLayout } from './useDashboardLayout'
@@ -45,12 +45,13 @@ const BREAKPOINTS = { lg: 1024, md: 768, sm: 0 }
 const ROW_HEIGHT = 44
 /**
  * Grid gutter per breakpoint. Gaps eat a phone's width disproportionately, so the narrow
- * breakpoints get tighter ones (16px on a 360px screen is nearly a tenth of the row).
+ * breakpoints get tighter ones. `sm` has no horizontal gutter at all: the phone grid is a
+ * single full-width column with no neighbour to separate from.
  */
 const MARGIN = {
-  lg: [BREAKPOINT_MARGIN.lg, BREAKPOINT_MARGIN.lg] as const,
-  md: [BREAKPOINT_MARGIN.md, BREAKPOINT_MARGIN.md] as const,
-  sm: [BREAKPOINT_MARGIN.sm, BREAKPOINT_MARGIN.sm] as const,
+  lg: [BREAKPOINT_MARGIN_X.lg, BREAKPOINT_MARGIN_Y.lg] as const,
+  md: [BREAKPOINT_MARGIN_X.md, BREAKPOINT_MARGIN_Y.md] as const,
+  sm: [BREAKPOINT_MARGIN_X.sm, BREAKPOINT_MARGIN_Y.sm] as const,
 }
 
 /**
@@ -145,7 +146,11 @@ export function CustomizableDashboard({
   }
 
   return (
-    <div className="w-full space-y-4">
+    // overflow-x-hidden is the backstop for the whole panel: a widget that misbehaves
+    // must never widen the page. A horizontal scrollbar is not just ugly here — it makes
+    // the document wider than the viewport, which drags the `fixed inset-x-0` bottom bar
+    // off the screen edge and loses the zoom the user set.
+    <div className="w-full max-w-full space-y-4 overflow-x-hidden">
       <MetricsHeaderPanel
         tiles={kpis}
         expanded={Boolean(layout.metricsExpanded)}
@@ -210,8 +215,9 @@ export function CustomizableDashboard({
         </div>
       ) : (
         // The measured container: `useContainerWidth` observes this div and hands the
-        // grid a pixel width, which is what react-grid-layout v2 expects.
-        <div ref={containerRef}>
+        // grid a pixel width, which is what react-grid-layout v2 expects. min-w-0 lets it
+        // shrink inside the flex/grid parents instead of being pushed wide by the grid.
+        <div ref={containerRef} className="w-full max-w-full min-w-0">
           {mounted ? (
             <ResponsiveGridLayout
               width={width}

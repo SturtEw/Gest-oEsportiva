@@ -13,10 +13,18 @@
  */
 import type { LayoutBreakpoint, WidgetInstance, WidgetLayout } from './layout-types'
 
-export const BREAKPOINT_COLS: Record<LayoutBreakpoint, number> = { lg: 12, md: 8, sm: 4 }
+export const BREAKPOINT_COLS: Record<LayoutBreakpoint, number> = { lg: 12, md: 8, sm: 1 }
 
-/** Grid gutter and inset per breakpoint. Consumed by the grid itself. */
-export const BREAKPOINT_MARGIN: Record<LayoutBreakpoint, number> = { lg: 16, md: 12, sm: 10 }
+/**
+ * Grid gutter per breakpoint (horizontal and vertical).
+ *
+ * `sm` is 0 horizontally because the phone grid is a single full-width column: there is
+ * no neighbour to leave a gutter for, and any margin would only make every card narrower
+ * than the tiles above it. The vertical gap on phones comes from `space-y` spacing on the
+ * stack instead.
+ */
+export const BREAKPOINT_MARGIN_X: Record<LayoutBreakpoint, number> = { lg: 16, md: 12, sm: 0 }
+export const BREAKPOINT_MARGIN_Y: Record<LayoutBreakpoint, number> = { lg: 16, md: 12, sm: 12 }
 
 /**
  * The inset the metrics tiles above the grid sit on (`MetricsHeaderPanel`'s `p-4`).
@@ -27,21 +35,21 @@ export const CONTENT_INSET = 16
 /**
  * react-grid-layout computes a column as
  *   colWidth = (width - margin*(cols-1) - containerPadding*2) / cols
- * so `containerPadding` is the only knob that insets the grid *and* narrows its columns.
- * `margin` does not: it is added inside the column maths and partly cancelled by the
- * `x*(colWidth + margin)` positioning term, so raising the margin alone leaves a
- * full-width card spanning the whole container.
+ * and places column 0 at `containerPadding + margin`. So the leading edge of a card is
+ * `containerPadding + margin`, and the trailing edge of a full-width card is that plus
+ * `colWidth*cols`, i.e. the container width less `containerPadding`. Both agree with the
+ * tiles' `p-4` inset only when `containerPadding + margin` equals `CONTENT_INSET`... *and*
+ * `containerPadding` equals it too, since the two edges are not symmetric.
  *
- * That is why this returns the full content inset rather than `inset - margin`: with it,
- * a card in column 0 starts on the tiles' `p-4` line *and* a full-width card ends on the
- * opposite one, so the two columns above and below the fold agree.
+ * Hence `containerPadding = CONTENT_INSET - margin(x)`: it makes the leading edge land on
+ * the tiles' line, and because the trailing edge is measured from `containerPadding`
+ * alone, a full-width card ends on the opposite one.
  *
- * The consequence to remember: `containerPadding` and `margin` are independent, and only
- * this one insets the grid. Setting it to 0 (the first version) made every widget 16px
- * wider and further left than the metrics row, at every breakpoint — not only on phones.
+ * Setting this to 0 (an earlier version) made every widget sit 16px left of and 32px
+ * wider than the metrics row, at every breakpoint — the size mismatch the professor saw.
  */
-export function containerPaddingFor(_breakpoint: LayoutBreakpoint): number {
-  return CONTENT_INSET
+export function containerPaddingFor(breakpoint: LayoutBreakpoint): number {
+  return Math.max(0, CONTENT_INSET - BREAKPOINT_MARGIN_X[breakpoint])
 }
 
 /**

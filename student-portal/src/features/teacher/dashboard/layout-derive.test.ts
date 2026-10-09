@@ -8,7 +8,7 @@
  * that actually matters: **every card fits inside the grid**.
  */
 import { describe, expect, it } from 'vitest'
-import { BREAKPOINT_COLS, BREAKPOINT_MARGIN, CONTENT_INSET, containerPaddingFor, fullWidthCardWidth, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, CONTENT_INSET, containerPaddingFor, fullWidthCardWidth, packLayout } from './layout-derive'
 import type { WidgetInstance } from './layout-types'
 
 function widget(id: string, w: number, h: number): WidgetInstance {
@@ -81,11 +81,12 @@ describe('alignment with the metrics tiles above the grid', () => {
    */
   it('starts the first column exactly on the metrics tiles inset, at every breakpoint', () => {
     for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
-      const margin = BREAKPOINT_MARGIN[breakpoint]
+      const margin = BREAKPOINT_MARGIN_X[breakpoint]
       const padding = containerPaddingFor(breakpoint)
       // react-grid-layout: left = containerPadding + x*(colWidth+margin) + margin, for x=0.
+      // The two terms must add up to the tiles' inset, not to the inset plus the margin.
       const leftEdge = padding + margin
-      expect(leftEdge, `${breakpoint} left edge`).toBe(CONTENT_INSET + margin)
+      expect(leftEdge, `${breakpoint} left edge`).toBe(CONTENT_INSET)
     }
   })
 
@@ -93,7 +94,7 @@ describe('alignment with the metrics tiles above the grid', () => {
     // A 390px phone; the grid container is the content column minus the shell's own px-4.
     const containerWidth = 390 - 32
     for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
-      const margin = BREAKPOINT_MARGIN[breakpoint]
+      const margin = BREAKPOINT_MARGIN_X[breakpoint]
       const padding = containerPaddingFor(breakpoint)
       const cols = BREAKPOINT_COLS[breakpoint]
       const width = fullWidthCardWidth(containerWidth, cols, margin, padding)
@@ -102,5 +103,27 @@ describe('alignment with the metrics tiles above the grid', () => {
       expect(width, `${breakpoint} card width`).toBeLessThanOrEqual(usable + 0.5)
       expect(width, `${breakpoint} card width`).toBeGreaterThan(0)
     }
+  })
+
+  /**
+   * The phone grid is a single column on purpose: with one column every widget is
+   * necessarily full width, whatever width it had on the desktop. That is the guarantee
+   * that no widget can be narrower than the tiles above it or overflow the screen.
+   */
+  it('gives every widget the full width of the single phone column', () => {
+    const widgets = [
+      widget('narrow', 3, 4), // a small desktop card
+      widget('half', 6, 7),
+      widget('wide', 12, 5),
+    ]
+    const cols = BREAKPOINT_COLS.sm
+    expect(cols).toBe(1)
+
+    const packed = packLayout(widgets, cols)
+    // Full width for all three, regardless of what they were on the desktop.
+    expect(packed.every((entry) => entry.layout.w === 1)).toBe(true)
+    // And stacked, not side by side, because a row only holds one card.
+    // Heights are 4, 7 and 5, so each starts where the previous one ended.
+    expect(packed.map((entry) => entry.layout.y)).toEqual([0, 4, 11])
   })
 })
