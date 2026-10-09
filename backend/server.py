@@ -38,6 +38,7 @@ from routers.auth import _password_reset_email_html, children_router, router as 
 from routers.class_activities import router as class_activities_router
 from routers.subgroups import router as subgroups_router
 from routers.analytics import router as analytics_router
+from routers.ai_chat import router as ai_chat_router
 from routers.forum import router as forum_router
 from routers.notifications import router as notifications_router
 from routers.individual_workouts import router as individual_workouts_router
@@ -408,6 +409,9 @@ app.include_router(subgroups_router)
 
 
 app.include_router(analytics_router)
+
+
+app.include_router(ai_chat_router)
 
 
 app.include_router(individual_workouts_router)

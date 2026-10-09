@@ -812,6 +812,15 @@ INDEXES: dict[str, list[IndexModel]] = {
 
     ],
 
+    # Chat privado com a IA: histórico lido sempre filtrando por user_id.
+    "mensagens_ia": [
+
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+
+        IndexModel([("user_id", ASCENDING), ("criado_em", ASCENDING)], name="user_criado"),
+
+    ],
+
     "rate_limits": [
 
         # Compound index supports the sliding-window count/delete queries

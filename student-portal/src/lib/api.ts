@@ -17,6 +17,7 @@ import { enrollmentApi } from './api/enrollment'
 import { activitiesApi } from './api/activities'
 import { subgroupsApi } from './api/subgroups'
 import { analyticsApi } from './api/analytics'
+import { aiApi } from './api/ai'
 import { individualWorkoutsApi } from './api/individualWorkouts'
 import { forumApi, notificationsApi, classesApi } from './api/forum'
 import { accountApi } from './api/account'
@@ -24,14 +25,15 @@ import type { TrainingTournament } from '@/lib/types'
 
 export { ApiError, request, API_BASE }
 /** Domain modules merged into `api`. Keys must be unique across them (see api.test.ts). */
-export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi, activitiesApi, subgroupsApi, analyticsApi, individualWorkoutsApi, forumApi, notificationsApi, classesApi, accountApi }
-export { teacherApi, enrollmentApi, activitiesApi, subgroupsApi, analyticsApi, individualWorkoutsApi, accountApi, forumApi, notificationsApi, classesApi }
+export const apiModules = { authApi, studentApi, adminApi, teacherApi, trainingsApi, enrollmentApi, activitiesApi, subgroupsApi, analyticsApi, aiApi, individualWorkoutsApi, forumApi, notificationsApi, classesApi, accountApi }
+export { teacherApi, enrollmentApi, activitiesApi, subgroupsApi, analyticsApi, aiApi, individualWorkoutsApi, accountApi, forumApi, notificationsApi, classesApi }
 export type { CreateScheduledClass } from './api/teacher'
 export type { PlanInput, RecurrenceRule, StudentPlanView, TeacherPlanSummary, WorkoutExercise, WorkoutPlan, WorkoutSession, WorkoutTemplate } from './api/individualWorkouts'
 export type { AccountInfo, AccountAvatar, DeactivateResult, DeleteResult } from './api/account'
 export type { ActivityChanges, ActivityInput, BracketInput, MatchResultInput, TeamInput } from './api/activities'
 export type { SubgroupInput, SubgroupSummary, StudentSubgroup, ActiveSession, AttendanceRecord } from './api/subgroups'
 export type { AnalyticsResumo, DailyPoint, HourPoint, StudentDetail, StudentSummary } from './api/analytics'
+export type { IaMessage } from './api/ai'
 export type { AccountStatusResponse, RegisterInput, RegisterResponse, TeacherRegisterInput, TeacherRegisterResponse } from './api/auth'
 export type { JoinRequestScope } from './api/enrollment'
 
@@ -45,6 +47,7 @@ export const api = {
   ...activitiesApi,
   ...subgroupsApi,
   ...analyticsApi,
+  ...aiApi,
   ...individualWorkoutsApi,
   ...forumApi,
   ...notificationsApi,

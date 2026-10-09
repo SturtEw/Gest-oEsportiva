@@ -8,8 +8,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, ChevronRight, Maximize2, MessageCircle, MessagesSquare, Minimize2, Search, X } from 'lucide-react'
+import { ArrowLeft, Bot, ChevronDown, ChevronRight, Maximize2, MessageCircle, MessagesSquare, Minimize2, Search, Sparkles, X } from 'lucide-react'
 import { ChatRoom } from '@/features/forum/ChatRoom'
+import { AiChatRoom } from './AiChatRoom'
 import { api } from '@/lib/api'
 import type { ForumClassSummary } from '@/lib/types'
 
@@ -119,12 +120,14 @@ function ClassList({
   loading,
   error,
   onSelect,
+  onSelectAi,
   onClose,
 }: {
   classes: ForumClassSummary[]
   loading: boolean
   error: string | null
   onSelect: (classId: string, name: string, subgroupId: string | null, subgroupName: string | null) => void
+  onSelectAi: () => void
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
@@ -165,6 +168,23 @@ function ClassList({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-surface-soft-2 p-2">
+        {/* Canal fixo da IA — sempre no topo, destacado das turmas. */}
+        <button
+          type="button"
+          onClick={onSelectAi}
+          className="group/ai mb-2 flex w-full items-center gap-2.5 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 via-purple-50 to-violet-100 px-3 py-2.5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:border-violet-800/60 dark:from-violet-950/60 dark:via-purple-950/50 dark:to-violet-900/40"
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md transition-transform duration-300 group-hover/ai:scale-110">
+            <Bot aria-hidden="true" className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 truncate text-sm font-bold text-violet-900 dark:text-violet-100">
+              Tira-Dúvidas <Sparkles aria-hidden="true" className="size-3.5 text-violet-500 dark:text-violet-300" />
+            </span>
+            <span className="block truncate text-xs text-violet-700/80 dark:text-violet-300/80">Assistente Virtual · conversa privada</span>
+          </span>
+        </button>
+
         {loading ? (
           <div className="space-y-2 p-1" aria-busy="true">
             <div className="h-14 animate-pulse rounded-xl bg-muted" />
@@ -245,6 +265,8 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
   const [error, setError] = useState<string | null>(null)
   // null = View 1 (lista); preenchido = View 2 (chat da turma/subgrupo).
   const [selected, setSelected] = useState<{ classId: string; name: string; subgroupId: string | null; subgroupName: string | null } | null>(null)
+  // Canal privado com a IA (View 2 alternativa, sem turma associada).
+  const [aiOpen, setAiOpen] = useState(false)
   // Janela: posição atual e modo tela cheia.
   const [win, setWin] = useState<Point>(() => clampWindow(window.innerWidth - WINDOW_W - MARGIN, window.innerHeight - WINDOW_H - MARGIN))
   const [fullscreen, setFullscreen] = useState(false)
@@ -313,7 +335,7 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
     }
   }, [open])
 
-  const close = useCallback(() => { setOpen(false); setSelected(null) }, [])
+  const close = useCallback(() => { setOpen(false); setSelected(null); setAiOpen(false) }, [])
 
   const chatTarget = useMemo(() => {
     if (!selected) return null
@@ -339,7 +361,45 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
             ? { left: 0, top: 0, width: "100%", height: "100%" }
             : { left: win.x, top: win.y, width: WINDOW_W, height: WINDOW_H }}
         >
-          {selected && chatTarget ? (
+          {aiOpen ? (
+            /* View 2 (IA): chat privado com o Assistente Virtual. */
+            <div className="flex h-full min-h-0 flex-col">
+              <header
+                onPointerDown={startWindowDrag}
+                onPointerMove={moveWindowDrag}
+                onPointerUp={endWindowDrag}
+                onPointerCancel={endWindowDrag}
+                className={"flex touch-none select-none items-center gap-2 border-b border-violet-900/30 bg-gradient-to-r from-violet-600 to-purple-700 px-3 py-2.5 text-white " + (fullscreen ? "" : "cursor-move")}
+              >
+                {!fullscreen && (
+                  <button type="button" aria-label="Voltar para a lista" onClick={() => setAiOpen(false)} className="rounded-full p-1.5 transition hover:bg-white/15">
+                    <ArrowLeft className="size-5" />
+                  </button>
+                )}
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/20">
+                  <Bot aria-hidden="true" className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-sm font-bold">Assistente Virtual</h2>
+                  <p className="text-xs text-white/75">Tira-dúvidas · conversa privada</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+                  onClick={toggleFullscreen}
+                  className="rounded-full p-1.5 transition hover:bg-white/15"
+                >
+                  {fullscreen ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+                </button>
+                <button type="button" aria-label="Fechar fórum" onClick={close} className="rounded-full p-1.5 transition hover:bg-white/15">
+                  <X className="size-5" />
+                </button>
+              </header>
+              <div className="min-h-0 flex-1">
+                <AiChatRoom myUserId={myUserId} revision={revision} />
+              </div>
+            </div>
+          ) : selected && chatTarget ? (
             <div className="flex h-full min-h-0 flex-col">
               <header
                 onPointerDown={startWindowDrag}
@@ -412,6 +472,7 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
                   loading={loading}
                   error={error}
                   onSelect={(classId, name, subgroupId, subgroupName) => setSelected({ classId, name, subgroupId, subgroupName })}
+                  onSelectAi={() => { setSelected(null); setAiOpen(true) }}
                   onClose={close}
                 />
               </div>
