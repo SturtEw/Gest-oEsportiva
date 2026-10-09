@@ -253,6 +253,32 @@
     outline: 3px solid rgb(102 140 93 / 0.45);
     outline-offset: 2px;
   }
+
+  /*
+   * react-grid-layout ships a visible red placeholder and a default resize handle
+   * that clash with the panel's palette (and with dark mode). Both are restyled to
+   * theme tokens here instead of being overridden with utilities, because the
+   * placeholder element is created by the library and never gets our class names.
+   */
+  .react-grid-item.react-grid-placeholder {
+    background: var(--primary);
+    opacity: 0.14;
+    border-radius: 1rem;
+  }
+
+  .react-grid-item > .react-resizable-handle::after {
+    border-color: var(--muted-foreground);
+    opacity: 0.55;
+  }
+
+  /*
+   * Dragging a card must not select the text under the cursor, and the card itself
+   * should sit above its neighbours while it moves.
+   */
+  .react-grid-item.react-draggable-dragging {
+    z-index: 3;
+    user-select: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

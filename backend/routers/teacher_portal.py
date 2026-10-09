@@ -1,5 +1,6 @@
 """Minimal teacher-area data and award actions remain role-checked server-side."""
 
+import json
 import uuid
 from datetime import timedelta
 
@@ -471,3 +472,57 @@ async def teacher_overview(user: User = Depends(get_current_user_with_impersonat
         "semana": semana,
         "hoje": today.isoformat(),
     }
+
+
+# ─── Painel personalizável (layout por professor) ─────────────────────────────
+# The layout is stored on the professor's own user document (field `painel_layout`).
+# The server treats it as an opaque, bounded JSON object: the widget catalog is a
+# front-end concern, so adding a widget kind never requires a backend deploy. The
+# only job here is to keep a hostile or buggy client from writing an unbounded blob.
+
+MAX_LAYOUT_BYTES = 32_768
+
+
+class PainelLayoutInput(BaseModel):
+    """Layout payload. `layout` is the client-owned DashboardLayoutConfig."""
+
+    layout: dict
+
+
+def _layout_payload(user_id: str, layout: dict | None, updated_at) -> dict:
+    return {
+        "layout": layout,
+        "atualizado_em": _iso_sort_key(updated_at) if updated_at else None,
+    }
+
+
+@router.get("/painel/layout")
+async def get_painel_layout(user: User = Depends(get_current_user)):
+    """Returns the professor's saved panel layout, or null when they never customised it."""
+    await _require_active_teacher(user)
+
+    document = await db.users.find_one(
+        {"id": user.id}, {"_id": 0, "painel_layout": 1, "painel_layout_em": 1}
+    )
+
+    layout = (document or {}).get("painel_layout")
+    updated_at = (document or {}).get("painel_layout_em")
+
+    return _layout_payload(user.id, layout, updated_at)
+
+
+@router.put("/painel/layout")
+async def save_painel_layout(payload: PainelLayoutInput, user: User = Depends(get_current_user)):
+    """Replaces the professor's panel layout. Idempotent: the client sends the whole object."""
+    await _require_active_teacher(user)
+
+    if len(json.dumps(payload.layout)) > MAX_LAYOUT_BYTES:
+        raise HTTPException(status_code=413, detail="Layout do painel excede o tamanho máximo permitido.")
+
+    now = now_utc()
+    await db.users.update_one(
+        {"id": user.id},
+        {"$set": {"painel_layout": payload.layout, "painel_layout_em": now}},
+    )
+
+    return _layout_payload(user.id, payload.layout, now)

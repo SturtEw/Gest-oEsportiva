@@ -21,6 +21,7 @@ def allowed_view_path(path: str, role: str) -> bool:
     if role == "professor" and (
         path in {
             "/api/professor/dashboard", "/api/professor/students", "/api/professor/agenda", "/api/professor/visao-geral",
+            "/api/professor/painel/layout",
             "/api/enrollment/teacher/invites", "/api/enrollment/teacher/requests", "/api/atividades/professor",
         } or
         (len(parts) == 6 and parts[1:4] == ["api", "professor", "students"] and parts[5] == "questions" and bool(parts[4])) or

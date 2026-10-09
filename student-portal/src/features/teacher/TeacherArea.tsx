@@ -315,7 +315,7 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
         <PageHeading id="teacher-section-title" as="h1" icon={meta.icon} eyebrow={meta.eyebrow} title={meta.label} description={meta.description} />
         <SectionErrorBoundary key={view} label={meta.label}>
         <Suspense fallback={<Skeleton className="h-96 rounded-2xl" />}>
-        {view === 'dashboard' && <TeacherDashboard onOpenStudent={openStudentById} />}
+        {view === 'dashboard' && <TeacherDashboard onOpenStudent={openStudentById} onNavigate={(next) => setView(next as View)} />}
 
         {view === 'turmas' && (
           loading ? (

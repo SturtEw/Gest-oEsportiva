@@ -189,6 +189,18 @@ export interface TeacherOverview {
   hoje: string
 }
 
+// ---------- Painel personalizável do professor ----------
+/**
+ * The dashboard layout is stored on the professor's own user document and returned
+ * verbatim. The client owns the schema (see dashboard/layout-types.ts); the server
+ * only validates that this is a bounded, JSON-serialisable object, so the widget
+ * catalog can grow without a backend deploy.
+ */
+export interface TeacherDashboardLayout {
+  layout: Record<string, unknown> | null
+  atualizado_em: string | null
+}
+
 // ---------- Atividades da turma e chaveamento de competições ----------
 export type BracketFormat = 'mata_mata' | 'pontos_corridos'
 /** aguardando: a team is still unknown · bye: advanced without playing. */

@@ -2,7 +2,7 @@
 
 import { request } from './client'
 import type {
-  PublicMessage, TeacherClass, TeacherOverview, TeacherScheduleResponse,
+  PublicMessage, TeacherClass, TeacherDashboardLayout, TeacherOverview, TeacherScheduleResponse,
 } from '@/lib/types'
 
 export interface CreateScheduledClass {
@@ -43,4 +43,12 @@ export const teacherApi = {
   updateScheduledClass: (id: string, payload: Partial<CreateScheduledClass> & { ativo?: boolean }) =>
     request<{ ok: boolean }>(`/api/professor/agenda/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   deleteScheduledClass: (id: string) => request<void>(`/api/professor/agenda/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // ---- Painel personalizável ----
+  // The layout lives on the professor's own document, so it follows the account
+  // across devices. It is opaque to the server: the client schema can evolve
+  // (new widget kinds) without a backend change.
+  getDashboardLayout: () => request<TeacherDashboardLayout>('/api/professor/painel/layout'),
+  saveDashboardLayout: (layout: Record<string, unknown>) =>
+    request<TeacherDashboardLayout>('/api/professor/painel/layout', { method: 'PUT', body: JSON.stringify({ layout }) }),
 }
