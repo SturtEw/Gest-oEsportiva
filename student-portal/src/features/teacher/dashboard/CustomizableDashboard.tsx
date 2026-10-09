@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from 'cn'
 import type { TeacherOverview } from '@/lib/types'
 import type { WidgetInstance, WidgetKind, WidgetLayout } from './layout-types'
-import { BREAKPOINT_COLS, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN, containerPaddingFor, packLayout } from './layout-derive'
 import { MetricsHeaderPanel } from './MetricsHeaderPanel'
 import type { KpiTile } from './KpiCard'
 import { useDashboardLayout } from './useDashboardLayout'
@@ -43,10 +43,30 @@ import { WidgetShell } from './widgets/WidgetShell'
  */
 const BREAKPOINTS = { lg: 1024, md: 768, sm: 0 }
 const ROW_HEIGHT = 44
-// Gaps eat a phone's width disproportionately: 16px gutters on a 360px screen is nearly
-// a tenth of the row. The narrow breakpoints get tighter margins for that reason.
-const MARGIN = { lg: [16, 16] as const, md: [12, 12] as const, sm: [10, 10] as const }
-const CONTAINER_PADDING = { lg: [0, 0] as const, md: [0, 0] as const, sm: [0, 0] as const }
+/**
+ * Grid gutter per breakpoint. Gaps eat a phone's width disproportionately, so the narrow
+ * breakpoints get tighter ones (16px on a 360px screen is nearly a tenth of the row).
+ */
+const MARGIN = {
+  lg: [BREAKPOINT_MARGIN.lg, BREAKPOINT_MARGIN.lg] as const,
+  md: [BREAKPOINT_MARGIN.md, BREAKPOINT_MARGIN.md] as const,
+  sm: [BREAKPOINT_MARGIN.sm, BREAKPOINT_MARGIN.sm] as const,
+}
+
+/**
+ * The horizontal inset that puts the grid's first column on the same line as the metrics
+ * tiles above it. The vertical padding is 0: the grid manages its own row gaps, and extra
+ * top padding would just be dead space between the header and the first card.
+ *
+ * Without this the grid spanned its full container while the tiles were inset by their
+ * `p-4`, so every widget sat 16px further left and 32px wider than the row above — the
+ * "passing the edge" the professor reported.
+ */
+const CONTAINER_PADDING = {
+  lg: [containerPaddingFor('lg'), 0] as const,
+  md: [containerPaddingFor('md'), 0] as const,
+  sm: [containerPaddingFor('sm'), 0] as const,
+}
 
 export function CustomizableDashboard({
   overview,

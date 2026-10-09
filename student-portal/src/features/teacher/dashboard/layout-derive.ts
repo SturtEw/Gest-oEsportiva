@@ -15,6 +15,44 @@ import type { LayoutBreakpoint, WidgetInstance, WidgetLayout } from './layout-ty
 
 export const BREAKPOINT_COLS: Record<LayoutBreakpoint, number> = { lg: 12, md: 8, sm: 4 }
 
+/** Grid gutter and inset per breakpoint. Consumed by the grid itself. */
+export const BREAKPOINT_MARGIN: Record<LayoutBreakpoint, number> = { lg: 16, md: 12, sm: 10 }
+
+/**
+ * The inset the metrics tiles above the grid sit on (`MetricsHeaderPanel`'s `p-4`).
+ * Whatever the grid does, a card in column 0 must start here so the two columns line up.
+ */
+export const CONTENT_INSET = 16
+
+/**
+ * react-grid-layout computes a column as
+ *   colWidth = (width - margin*(cols-1) - containerPadding*2) / cols
+ * so `containerPadding` is the only knob that insets the grid *and* narrows its columns.
+ * `margin` does not: it is added inside the column maths and partly cancelled by the
+ * `x*(colWidth + margin)` positioning term, so raising the margin alone leaves a
+ * full-width card spanning the whole container.
+ *
+ * That is why this returns the full content inset rather than `inset - margin`: with it,
+ * a card in column 0 starts on the tiles' `p-4` line *and* a full-width card ends on the
+ * opposite one, so the two columns above and below the fold agree.
+ *
+ * The consequence to remember: `containerPadding` and `margin` are independent, and only
+ * this one insets the grid. Setting it to 0 (the first version) made every widget 16px
+ * wider and further left than the metrics row, at every breakpoint — not only on phones.
+ */
+export function containerPaddingFor(_breakpoint: LayoutBreakpoint): number {
+  return CONTENT_INSET
+}
+
+/**
+ * The width react-grid-layout gives a full-width card, given the measured container.
+ * Mirrors the library's own maths so a test can assert it fits rather than eyeballing it.
+ */
+export function fullWidthCardWidth(containerWidth: number, cols: number, margin: number, containerPadding: number): number {
+  const colWidth = (containerWidth - margin * (cols - 1) - containerPadding * 2) / cols
+  return colWidth * cols + (cols - 1) * margin
+}
+
 /**
  * Repacks a list of widgets into `cols` columns.
  *

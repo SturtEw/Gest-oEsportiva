@@ -8,7 +8,7 @@
  * that actually matters: **every card fits inside the grid**.
  */
 import { describe, expect, it } from 'vitest'
-import { BREAKPOINT_COLS, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN, CONTENT_INSET, containerPaddingFor, fullWidthCardWidth, packLayout } from './layout-derive'
 import type { WidgetInstance } from './layout-types'
 
 function widget(id: string, w: number, h: number): WidgetInstance {
@@ -70,5 +70,37 @@ describe('packLayout', () => {
   it('preserves each widget height so the vertical rhythm of the panel survives', () => {
     const packed = packLayout([widget('a', 6, 7)], BREAKPOINT_COLS.sm)
     expect(packed[0].layout.h).toBe(7)
+  })
+})
+
+describe('alignment with the metrics tiles above the grid', () => {
+  /**
+   * The bug this locks down: the grid had no inset, so a widget covered the full panel
+   * width while the tiles above it were inset by their own `p-4`. Every card was then
+   * 16px further left and 32px wider than the row above — the "passing the edge" report.
+   */
+  it('starts the first column exactly on the metrics tiles inset, at every breakpoint', () => {
+    for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
+      const margin = BREAKPOINT_MARGIN[breakpoint]
+      const padding = containerPaddingFor(breakpoint)
+      // react-grid-layout: left = containerPadding + x*(colWidth+margin) + margin, for x=0.
+      const leftEdge = padding + margin
+      expect(leftEdge, `${breakpoint} left edge`).toBe(CONTENT_INSET + margin)
+    }
+  })
+
+  it('keeps a full-width card inside the panel, not spilling past it', () => {
+    // A 390px phone; the grid container is the content column minus the shell's own px-4.
+    const containerWidth = 390 - 32
+    for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
+      const margin = BREAKPOINT_MARGIN[breakpoint]
+      const padding = containerPaddingFor(breakpoint)
+      const cols = BREAKPOINT_COLS[breakpoint]
+      const width = fullWidthCardWidth(containerWidth, cols, margin, padding)
+      // The card is inset by containerPadding on both sides of the container.
+      const usable = containerWidth - padding * 2
+      expect(width, `${breakpoint} card width`).toBeLessThanOrEqual(usable + 0.5)
+      expect(width, `${breakpoint} card width`).toBeGreaterThan(0)
+    }
   })
 })
