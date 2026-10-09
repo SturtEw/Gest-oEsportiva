@@ -29,7 +29,6 @@ Endpoints (all require an authenticated user acting on their own account):
 
 import base64
 import re
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator

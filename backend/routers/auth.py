@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import secrets
-import time
 import uuid
 from datetime import date, datetime, timedelta
 from html import escape
@@ -47,8 +46,6 @@ from lib.security import (
     get_current_user,
 
     hash_password,
-
-    require_role,
 
     revoke_user_tokens,
 

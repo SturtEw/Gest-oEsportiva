@@ -42,8 +42,32 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 
 SYSTEM_PROMPT = (
     "Você é o assistente virtual do sistema de gestão esportiva. "
-    "Responda dúvidas sobre esportes e uso da plataforma."
+    "Responda apenas dúvidas sobre treinos, informações acadêmicas e como usar a plataforma. "
+    "Não responda sobre política ou assuntos fora do esporte. "
+    "Seja sempre educado e encorajador."
 )
+
+# Assuntos fora do escopo: o prompt acima orienta o modelo, mas um pedido pode
+# tentar contorná-lo. Este filtro é a segunda camada — barra temas claramente
+# fora do escopo (política, religião, violência, conteúdo adulto) antes de
+# chamar o provedor, gastando menos tokens e evitando desvios previsíveis.
+FORA_DE_ESCOPO = (
+    "política", "politica", "eleição", "eleicao", "candidato", "presidente",
+    "governo", "partido", "voto", "religião", "religiao", "igreja", "deus",
+    "arma", "arma de fogo", "violência", "violencia", "pornografia", "sexo",
+    "aposta", "apostas", "bet",
+)
+
+RESPOSTA_FORA_DE_ESCOPO = (
+    "Sou o assistente do sistema de gestão esportiva e só consigo ajudar com "
+    "treinos, informações acadêmicas e o uso da plataforma. "
+    "Posso te ajudar com algo relacionado aos seus treinos ou à sua turma? 💪"
+)
+
+
+def _fora_de_escopo(texto: str) -> bool:
+    alvo = texto.lower()
+    return any(termo in alvo for termo in FORA_DE_ESCOPO)
 
 
 class ChatInput(BaseModel):
@@ -165,7 +189,12 @@ async def chat(payload: ChatInput, user: User = Depends(get_current_user)) -> di
 
     fonte = "gemini"
     try:
-        resposta = await _ask_gemini(historico, texto)
+        if _fora_de_escopo(texto):
+            # Barreira 2 (o prompt é a barreira 1): nem chama o provedor.
+            fonte = "escopo"
+            resposta = RESPOSTA_FORA_DE_ESCOPO
+        else:
+            resposta = await _ask_gemini(historico, texto)
     except LookupError:
         # Sem chave: contingência local (o chat continua utilizável).
         fonte = "local"
@@ -188,7 +217,8 @@ async def chat(payload: ChatInput, user: User = Depends(get_current_user)) -> di
     return {
         "pergunta": _wire(pergunta_doc),
         "resposta": _wire(resposta_doc),
-        "ia_disponivel": fonte == "gemini",
+        # "escopo" é uma recusa intencional (não indica provedor indisponível).
+        "ia_disponivel": fonte in ("gemini", "escopo"),
     }
 
 

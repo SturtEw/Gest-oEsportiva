@@ -47,7 +47,7 @@ async def _student_user_ids(aluno_id: str) -> list[str]:
     """User accounts that should see this student's notifications: the student
     itself and any guardian linked to it."""
     ids: list[str] = []
-    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "responsavel_id": 1})
+    # O guardião é encontrado por filhos_ids (fallback: campo legado no aluno).
     cursor = db.users.find({"$or": [{"aluno_id": aluno_id}, {"tipo": "responsavel", "filhos_ids": aluno_id}]}, {"_id": 0, "id": 1})
     async for item in cursor:
         ids.append(item["id"])
@@ -68,7 +68,7 @@ async def notify_student(
     now = now_utc()
     documents = [
         {
-            "id": _uuid(),
+            "id": str(uuid.uuid4()),
             "destinatario_id": user_id,
             "aluno_id": aluno_id,
             "titulo": titulo,

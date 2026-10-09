@@ -72,3 +72,35 @@ async def test_clear_history_removes_only_own_messages(db):
     assert result["removidas"] == 2
     remaining = {doc["user_id"] for doc in db.mensagens_ia.documents}
     assert remaining == {"user-2"}
+
+
+# ─── Escopo restrito (prompt + barreira no backend) ──────────────────────────
+async def test_off_topic_question_is_refused_without_calling_the_provider(db, monkeypatch):
+    chamadas = []
+
+    async def spy_ask(*args, **kwargs):
+        chamadas.append(args)
+        return "resposta do provedor"
+
+    monkeypatch.setattr(router, "_ask_gemini", spy_ask)
+
+    result = await router.chat(router.ChatInput(mensagem="Quem você acha que deve ganhar a eleição?"), user=ALUNO)
+
+    assert result["resposta"]["fonte"] == "escopo"
+    assert "gestão esportiva" in result["resposta"]["texto"]
+    # O provedor NÃO foi chamado: a recusa é local e determinística.
+    assert chamadas == []
+    # A recusa é intencional — não sinaliza provedor indisponível.
+    assert result["ia_disponivel"] is True
+
+
+async def test_in_scope_question_reaches_the_provider(db, monkeypatch):
+    async def ok_ask(*_args, **_kwargs):
+        return "Faça 3 séries de 10 repetições."
+
+    monkeypatch.setattr(router, "_ask_gemini", ok_ask)
+
+    result = await router.chat(router.ChatInput(mensagem="Quantas séries de agachamento devo fazer?"), user=ALUNO)
+
+    assert result["resposta"]["fonte"] == "gemini"
+    assert result["resposta"]["texto"] == "Faça 3 séries de 10 repetições."

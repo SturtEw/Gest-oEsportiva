@@ -161,7 +161,6 @@ async def _allow(path: str, ip: str) -> tuple[bool, int | None]:
 
     limit, secs = window
 
-    key = f"{path}:{ip}"
     now = time.time()
     cutoff = now - secs
 

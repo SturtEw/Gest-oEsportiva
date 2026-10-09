@@ -3,17 +3,14 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 
 from lib.dates import app_tz, now_utc, to_iso
 from lib.db import db
-from lib.portal_access import get_authorized_aluno, require_assigned_professor
-from lib.realtime import publish_event
 from lib.impersonation import get_current_user_with_impersonation
 from lib.security import get_current_user
 from models.models import User
