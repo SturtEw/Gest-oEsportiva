@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Self-service account management, shared by teachers and students:
  * profile data, avatar (preset gallery + upload), password and danger zone.
  * Destructive actions always demand the current password in a warning modal.
@@ -195,7 +195,7 @@ export function AccountManagement({ sessionUser, onAccountChanged, onSignedOut }
   return (
     <div className="space-y-5">
       {notice && (
-        <Alert className="border-[#D5E6CE] bg-[#F6FAF2]">
+        <Alert className="border-[#D5E6CE] bg-surface-tint">
           <Check aria-hidden="true" />
           <AlertDescription className="flex items-center justify-between gap-3">
             <span>{notice}</span>

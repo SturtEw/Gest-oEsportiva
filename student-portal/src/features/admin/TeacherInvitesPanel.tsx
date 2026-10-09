@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+﻿import { useMemo, useState, type FormEvent } from 'react'
 import { Check, CircleAlert, Copy, Link2, MailCheck, MailX, RotateCw, Send, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -109,23 +109,23 @@ export function TeacherInvitesPanel({ classes, revision }: { classes: AdminClass
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
               <Field className="sm:col-span-2">
                 <FieldLabel htmlFor="invite-email">E-mail do professor</FieldLabel>
-                <Input id="invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nome@escola.com.br" className="h-11 rounded-xl bg-white" />
+                <Input id="invite-email" type="email" required autoComplete="off" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nome@escola.com.br" className="h-11 rounded-xl bg-card" />
               </Field>
               <Field>
                 <FieldLabel htmlFor="invite-name">Nome (opcional)</FieldLabel>
-                <Input id="invite-name" maxLength={120} value={nome} onChange={(event) => setNome(event.target.value)} placeholder="Aparece no convite" className="h-11 rounded-xl bg-white" />
+                <Input id="invite-name" maxLength={120} value={nome} onChange={(event) => setNome(event.target.value)} placeholder="Aparece no convite" className="h-11 rounded-xl bg-card" />
               </Field>
               <Field>
                 <FieldLabel htmlFor="invite-validity">Validade do link</FieldLabel>
                 <Select items={VALIDITY_OPTIONS} value={validity} onValueChange={(value) => { if (typeof value === 'string') setValidity(value) }}>
-                  <SelectTrigger id="invite-validity" className="h-11 w-full rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="invite-validity" className="h-11 w-full rounded-xl bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>{VALIDITY_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
               <Field className="sm:col-span-2">
                 <FieldLabel htmlFor="invite-class">Turma (opcional)</FieldLabel>
                 <Select items={classItems} value={turmaId} onValueChange={(value) => setTurmaId(typeof value === 'string' ? value : NO_CLASS)}>
-                  <SelectTrigger id="invite-class" className="h-11 w-full rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="invite-class" className="h-11 w-full rounded-xl bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>{classItems.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
                 </Select>
                 <FieldDescription>Só aparecem turmas sem professor. O professor assume a turma ao concluir o cadastro.</FieldDescription>
@@ -145,7 +145,7 @@ export function TeacherInvitesPanel({ classes, revision }: { classes: AdminClass
         </Card>
 
         {created ? (
-          <Card className="border-0 bg-[#F6FAF2] shadow-none ring-1 ring-[#D5E6CE]" aria-live="polite">
+          <Card className="border-0 bg-surface-tint shadow-none ring-1 ring-[#D5E6CE]" aria-live="polite">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-display"><Check aria-hidden="true" className="size-4 text-success" />Link pronto para {created.invite.email}</CardTitle>
               <CardDescription>
@@ -155,7 +155,7 @@ export function TeacherInvitesPanel({ classes, revision }: { classes: AdminClass
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Input readOnly value={link} aria-label="Link do convite" onFocus={(event) => event.currentTarget.select()} className="h-11 min-w-0 flex-1 rounded-xl bg-white font-mono text-xs" />
+                <Input readOnly value={link} aria-label="Link do convite" onFocus={(event) => event.currentTarget.select()} className="h-11 min-w-0 flex-1 rounded-xl bg-card font-mono text-xs" />
                 <Button type="button" variant={copied ? 'secondary' : 'default'} className="h-11 shrink-0 rounded-xl" onClick={() => void copy()}>
                   {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
                   {copied ? 'Copiado' : 'Copiar link'}

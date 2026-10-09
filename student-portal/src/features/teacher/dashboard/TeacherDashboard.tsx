@@ -1,4 +1,4 @@
-
+﻿
 /**
  * Teacher dashboard — the "command centre" a coach checks on the way to the court.
  *
@@ -157,7 +157,7 @@ export function TeacherDashboard({ onOpenStudent }: { onOpenStudent?: (id: strin
     // the right, which is exactly the "wasted right side" complaint.
     <div className="w-full space-y-6">
       {notice && (
-        <Alert className="border-[#D5E6CE] bg-[#F6FAF2]">
+        <Alert className="border-[#D5E6CE] bg-surface-tint">
           <AlertDescription className="flex items-center justify-between gap-3">
             {notice}
             <button type="button" onClick={() => setNotice(null)} aria-label="Fechar aviso" className="rounded p-1 hover:bg-black/5">

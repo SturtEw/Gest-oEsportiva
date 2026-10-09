@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { ClipboardList, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,7 +67,7 @@ export function JoinRequestStatusCard({ requests, loading, error, onCancel, read
             </p>
             <p className="mt-2 text-xs text-muted-foreground">Enviado em {formatDateTime(latest.dataSolicitacao)}</p>
             {latest.status === 'rejeitada' && (
-              <p className="mt-3 flex gap-2 rounded-lg bg-white p-3 text-xs leading-5 text-muted-foreground">
+              <p className="mt-3 flex gap-2 rounded-lg bg-card p-3 text-xs leading-5 text-muted-foreground">
                 <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                 <span>
                   {latest.motivo_rejeicao ? <>Motivo: <span className="text-foreground">{latest.motivo_rejeicao}</span>. </> : null}

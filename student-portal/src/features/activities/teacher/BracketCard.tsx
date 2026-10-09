@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { CircleAlert, Pencil, Shuffle, Trash2, Trophy } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -80,7 +80,7 @@ export function BracketCard({ detail, readOnly, onCreate, onDelete, onSaveTeams,
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {withoutTeam > 0 && (
-          <Alert className="border-[#E9E1CC] bg-[#FFFDF7]">
+          <Alert className="border-[#E9E1CC] bg-surface-warm">
             <CircleAlert aria-hidden="true" />
             <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
               {withoutTeam === 1 ? '1 participante entrou depois do sorteio e está sem time.' : `${withoutTeam} participantes entraram depois do sorteio e estão sem time.`}

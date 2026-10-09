@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ForumWidget — FAB arrastável + janela flutuante do fórum.
  *
  * Arraste vs. clique: o FAB usa eventos nativos de pointer (mouse/touch
@@ -159,12 +159,12 @@ function ClassList({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar turma ou subgrupo…"
             aria-label="Buscar turma ou subgrupo"
-            className="h-9 w-full rounded-xl border border-border bg-white pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-[#234E40] focus:ring-2 focus:ring-[#234E40]/20"
+            className="h-9 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-[#234E40] focus:ring-2 focus:ring-[#234E40]/20"
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#FAFCF7] p-2">
+      <div className="flex-1 overflow-y-auto bg-surface-soft-2 p-2">
         {loading ? (
           <div className="space-y-2 p-1" aria-busy="true">
             <div className="h-14 animate-pulse rounded-xl bg-muted" />
@@ -188,9 +188,9 @@ function ClassList({
                     <button
                       type="button"
                       onClick={() => onSelect(item.id, item.nome, null, null)}
-                      className="min-w-0 flex-1 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-[#EAF0E5]"
+                      className="min-w-0 flex-1 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-surface-soft"
                     >
-                      <span className="block truncate text-sm font-semibold text-[#18372F]">{item.nome}</span>
+                      <span className="block truncate text-sm font-semibold text-heading">{item.nome}</span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {item.modalidade ?? 'Turma'} · {item.total_membros} {item.total_membros === 1 ? 'membro' : 'membros'}
                       </span>
@@ -201,7 +201,7 @@ function ClassList({
                         aria-label={isOpen ? `Ocultar subgrupos de ${item.nome}` : `Ver subgrupos de ${item.nome}`}
                         aria-expanded={isOpen}
                         onClick={() => setExpanded((current) => ({ ...current, [item.id]: !isOpen }))}
-                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-[#EAF0E5]"
+                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-surface-soft"
                       >
                         {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                       </button>
@@ -214,7 +214,7 @@ function ClassList({
                           <button
                             type="button"
                             onClick={() => onSelect(item.id, item.nome, sub.id, sub.nome)}
-                            className="block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-sm text-[#3A5548] transition hover:bg-[#EAF0E5]"
+                            className="block w-full truncate rounded-lg px-2.5 py-1.5 text-left text-sm text-[#3A5548] transition hover:bg-surface-soft"
                           >
                             {sub.nome}
                           </button>
@@ -334,7 +334,7 @@ export function ForumWidget({ myUserId, myRole, live, revision }: {
           ref={windowRef}
           role="dialog"
           aria-label="Fórum da turma"
-          className={"fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/10 " + (fullscreen ? "" : "rounded-2xl")}
+          className={"fixed z-[9999] flex flex-col overflow-hidden bg-card shadow-2xl ring-1 ring-black/10 " + (fullscreen ? "" : "rounded-2xl")}
           style={fullscreen
             ? { left: 0, top: 0, width: "100%", height: "100%" }
             : { left: win.x, top: win.y, width: WINDOW_W, height: WINDOW_H }}

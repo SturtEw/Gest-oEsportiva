@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { ArrowRight, Ticket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -60,7 +60,7 @@ export function InviteCodeForm({ onJoin, onJoined, disabled }: Props) {
               disabled={disabled}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? 'enrollment-invite-error' : 'enrollment-invite-help'}
-              className="h-12 rounded-xl bg-white text-center font-mono text-lg font-bold tracking-[0.22em] uppercase"
+              className="h-12 rounded-xl bg-card text-center font-mono text-lg font-bold tracking-[0.22em] uppercase"
             />
             {error
               ? <FieldError id="enrollment-invite-error">{error}</FieldError>

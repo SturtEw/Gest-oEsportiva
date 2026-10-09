@@ -53,6 +53,19 @@
   --danger-soft-foreground: #B7542B;
   --eyebrow: #66806D;
   --heading: #18372F;
+
+  /* ── Tokens semânticos de superfície/realce ──
+     Substituem os hex fixos espalhados pelos componentes (bg-[#EAF0E5],
+     text-[#18372F]…). No dark mode ganham valores escuros abaixo, o que
+     conserta de uma vez todos os cards e textos que ficavam ilegíveis. */
+  --surface-soft: #EAF0E5;        /* chips, ícones, realce neutro */
+  --surface-soft-2: #F7F9F5;      /* faixas internas, sub-cards */
+  --surface-warm: #FFFDF7;        /* avisos suaves */
+  --surface-tint: #F6FAF2;        /* estado concluído/positivo */
+  --on-soft: #3F6E47;             /* texto sobre surface-soft */
+  --accent-soft: #D9EFAB;
+  --on-accent-soft: #183C32;
+  --muted-strong: #55734D;        /* ícones e rótulos verdes */
 }
 
 /* ── Modo escuro: fundos profundos, cards ligeiramente mais claros ──
@@ -96,6 +109,16 @@
   --danger-soft-foreground: #FCA5A5;
   --eyebrow: #6EE7B7;
   --heading: #F1F5F9;
+
+  /* Superfícies claras do tema claro → versões profundas no escuro. */
+  --surface-soft: #26354A;
+  --surface-soft-2: #1E293B;
+  --surface-warm: #262F3F;
+  --surface-tint: #1C2E33;
+  --on-soft: #86EFAC;
+  --accent-soft: #14532D;
+  --on-accent-soft: #D1FAE5;
+  --muted-strong: #6EE7B7;
 }
 
 @theme inline {
@@ -135,6 +158,15 @@
   --color-danger-soft-foreground: var(--danger-soft-foreground);
   --color-eyebrow: var(--eyebrow);
   --color-heading: var(--heading);
+  /* Tokens semânticos: use bg-surface-soft, text-on-soft, etc. */
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-soft-2: var(--surface-soft-2);
+  --color-surface-warm: var(--surface-warm);
+  --color-surface-tint: var(--surface-tint);
+  --color-on-soft: var(--on-soft);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent-soft: var(--on-accent-soft);
+  --color-muted-strong: var(--muted-strong);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
   --radius-lg: var(--radius);

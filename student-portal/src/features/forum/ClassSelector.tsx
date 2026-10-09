@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react'
+﻿import { Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from 'cn'
 import type { ForumClassSummary } from '@/lib/types'
@@ -58,10 +58,10 @@ export function ClassSelector({ classes, activeId, onSelect, layout }: Props) {
             aria-current={active ? 'true' : undefined}
             className={cn(
               'w-full rounded-xl px-3 py-2.5 text-left transition',
-              active ? 'bg-[#EAF0E5] ring-1 ring-[#C7D8BF]' : 'hover:bg-muted',
+              active ? 'bg-surface-soft ring-1 ring-[#C7D8BF]' : 'hover:bg-muted',
             )}
           >
-            <p className={cn('truncate text-sm', active ? 'font-bold text-[#234E40]' : 'font-semibold')}>{item.nome}</p>
+            <p className={cn('truncate text-sm', active ? 'font-bold text-primary' : 'font-semibold')}>{item.nome}</p>
             <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
               <Users aria-hidden="true" className="size-3" />
               {item.total_membros} membro(s){item.modalidade ? ` · ${item.modalidade}` : ''}

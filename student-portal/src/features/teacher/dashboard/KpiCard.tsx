@@ -1,4 +1,4 @@
-/**
+﻿/**
  * KPI tiles for the teacher dashboard.
  *
  * Two rules drive this component:
@@ -39,7 +39,7 @@ const TONE_RING: Record<KpiTone, string> = {
 
 const TONE_ICON: Record<KpiTone, string> = {
   neutral: 'bg-muted text-muted-foreground',
-  positive: 'bg-[#EAF0E5] text-[#4C6B45]',
+  positive: 'bg-surface-soft text-[#4C6B45]',
   warning: 'bg-[#FFF7E8] text-[#8A6524]',
   critical: 'bg-[#FDEEE7] text-[#B7542B]',
   info: 'bg-[#EDF2F8] text-[#3E5C7A]',

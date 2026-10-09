@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Global search for the teacher area, rendered in the header on every tab.
  * Searches classes, activities and students as you type and shows grouped
  * results; picking one navigates to the right tab (and opens the target).
@@ -96,7 +96,7 @@ export function GlobalSearchBar({ classes, activities, students, onPick, disable
           onFocus={() => query.length >= 2 && setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder="Buscar turmas, atividades, alunos…"
-          className="h-10 w-full rounded-xl border border-border bg-white pl-9 pr-9 text-sm outline-none transition focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+          className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-9 text-sm outline-none transition focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
         />
         {query && (
           <button type="button" aria-label="Limpar busca" onClick={() => { setQuery(''); setOpen(false) }}
@@ -108,7 +108,7 @@ export function GlobalSearchBar({ classes, activities, students, onPick, disable
 
       {open && query.length >= 2 && (
         <div id="teacher-search-results" role="listbox" aria-label="Resultados da busca"
-          className="absolute right-0 top-12 z-40 max-h-80 w-full min-w-72 overflow-y-auto rounded-2xl border border-border bg-white p-2 shadow-xl">
+          className="absolute right-0 top-12 z-40 max-h-80 w-full min-w-72 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-xl">
           {results.length === 0 ? (
             <p className="px-3 py-4 text-center text-sm text-muted-foreground">Nada encontrado para “{query}”.</p>
           ) : results.map((result, index) => {

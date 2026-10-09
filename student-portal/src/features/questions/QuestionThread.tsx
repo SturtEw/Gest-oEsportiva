@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+﻿import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { AlertCircle, ArrowUpRight, Check, Clock3, MessageCircle, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,9 +56,9 @@ export function QuestionThread({ alunoId, turma, professorNome, sessionUser, mes
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(260px,0.7fr)]" aria-labelledby="questions-title">
       <Card className="overflow-hidden border-0 shadow-none ring-1 ring-border">
-        <CardHeader className="border-b border-border/70 bg-white p-5 sm:p-6">
+        <CardHeader className="border-b border-border/70 bg-card p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#EAF0E5] text-primary"><MessageCircle aria-hidden="true" className="size-5" /></span>
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-surface-soft text-primary"><MessageCircle aria-hidden="true" className="size-5" /></span>
             <div className="min-w-0">
               <CardTitle id="questions-title" className="font-display text-xl font-bold">Dúvidas com o professor</CardTitle>
               <CardDescription className="mt-1">{turma?.nome ?? 'Sua turma'}{professorNome ? ` · ${professorNome}` : ''}</CardDescription>
@@ -89,8 +89,8 @@ export function QuestionThread({ alunoId, turma, professorNome, sessionUser, mes
                   const own = isOwnMessage(message)
                   return (
                     <div key={message.id} className={`flex items-end gap-2 ${own ? 'justify-end' : 'justify-start'}`}>
-                      {!own && <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#EAF0E5] text-[10px] font-bold text-primary" aria-hidden="true">{initials(message.autor_nome)}</span>}
-                      <article className={`max-w-[88%] rounded-2xl px-4 py-3 sm:max-w-[78%] ${own ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-border bg-white text-foreground'}`}>
+                      {!own && <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-soft text-[10px] font-bold text-primary" aria-hidden="true">{initials(message.autor_nome)}</span>}
+                      <article className={`max-w-[88%] rounded-2xl px-4 py-3 sm:max-w-[78%] ${own ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-border bg-card text-foreground'}`}>
                         <div className="mb-1 flex items-center gap-2 text-[11px] opacity-75">
                           <span className="font-semibold">{own ? (message.autor_tipo === 'responsavel' ? 'Você · responsável' : 'Você') : `${message.autor_nome}${message.autor_tipo === 'professor' ? ' · professor' : ''}`}</span>
                           <time dateTime={message.dataEnvio}>{formatDateTime(message.dataEnvio)}</time>
@@ -108,7 +108,7 @@ export function QuestionThread({ alunoId, turma, professorNome, sessionUser, mes
 
             {error && <div role="alert" className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 sm:mx-6"><span>{error}</span><Button type="button" variant="outline" size="sm" onClick={onRefresh}>Tentar novamente</Button></div>}
 
-            <form className="border-t border-border/70 bg-white p-4 sm:p-6" onSubmit={(event) => void submit(event)}>
+            <form className="border-t border-border/70 bg-card p-4 sm:p-6" onSubmit={(event) => void submit(event)}>
               <Field>
                 <FieldLabel htmlFor={`question-${alunoId}`} className="text-sm font-semibold">Escreva sua dúvida para o professor</FieldLabel>
                 <Textarea
@@ -140,10 +140,10 @@ export function QuestionThread({ alunoId, turma, professorNome, sessionUser, mes
       </Card>
 
       <aside className="space-y-4">
-        <Card className="border-0 bg-[#EAF0E5] shadow-none ring-0">
+        <Card className="border-0 bg-surface-soft shadow-none ring-0">
           <CardContent className="p-5">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-white text-[#55734D]"><ShieldCheck aria-hidden="true" className="size-5" /></div>
-            <h2 className="mt-4 font-display text-lg font-bold text-[#234E40]">Uma conversa respeitosa</h2>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-card text-muted-strong"><ShieldCheck aria-hidden="true" className="size-5" /></div>
+            <h2 className="mt-4 font-display text-lg font-bold text-primary">Uma conversa respeitosa</h2>
             <p className="mt-2 text-sm leading-6 text-[#52645A]">Não compartilhe senhas ou informações pessoais. Seu professor responderá assim que estiver disponível.</p>
           </CardContent>
         </Card>

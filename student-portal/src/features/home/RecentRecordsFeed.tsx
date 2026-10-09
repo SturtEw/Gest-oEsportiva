@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, BookOpenCheck, CalendarCheck2, MessageCircle } from 'lucide-react'
+﻿import { ArrowRight, Bell, BookOpenCheck, CalendarCheck2, MessageCircle } from 'lucide-react'
 import type { PortalSection, StudentPortalSnapshot } from '@/lib/types'
 import { formatBimester, formatDate, formatDateTime, toSortableTime } from '@/lib/formatters'
 
@@ -56,10 +56,10 @@ export function RecentRecordsFeed({ snapshot, onOpenSection }: { snapshot: Stude
 
   return (
     <div className="divide-y divide-border/70">
-      {recent.length === 0 ? <div className="py-9 text-center"><div className="mx-auto flex size-11 items-center justify-center rounded-2xl bg-[#EAF0E5] text-[#55734D]"><MessageCircle className="size-5" /></div><p className="mt-3 font-semibold">Seu percurso começa aqui</p><p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">Quando a escola registrar uma chamada, avaliação ou comunicado, você verá as novidades nesta área.</p></div> : recent.map((event) => {
+      {recent.length === 0 ? <div className="py-9 text-center"><div className="mx-auto flex size-11 items-center justify-center rounded-2xl bg-surface-soft text-muted-strong"><MessageCircle className="size-5" /></div><p className="mt-3 font-semibold">Seu percurso começa aqui</p><p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">Quando a escola registrar uma chamada, avaliação ou comunicado, você verá as novidades nesta área.</p></div> : recent.map((event) => {
         const Icon = event.icon
         return <button key={event.id} type="button" onClick={() => onOpenSection(event.section)} className="flex w-full items-center gap-3 py-4 text-left transition-colors hover:bg-[#FBFCF9] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#F2F5EF] text-[#55734D]"><Icon aria-hidden="true" className="size-4" /></span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#F2F5EF] text-muted-strong"><Icon aria-hidden="true" className="size-4" /></span>
           <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{event.title}</span><span className="mt-1 block text-xs text-muted-foreground">{event.detail} · {formatDateTime(event.date)}</span></span>
           <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         </button>

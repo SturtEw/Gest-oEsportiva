@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Teacher side of individual (1-on-1) training: pick a student from the roster,
  * prescribe plans from templates or from scratch, and track which sessions the
  * student marked as completed. Realtime invalidations arrive via `revision`.
@@ -253,10 +253,10 @@ function PlanTrackingCard({ plan, readOnly, deleting, onEdit, onDelete }: {
         {expanded && (
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {(plan.sessoes ?? []).map((session) => (
-              <li key={session.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${session.is_completed ? 'border-[#D5E6CE] bg-[#F6FAF2]' : ''}`}>
+              <li key={session.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${session.is_completed ? 'border-[#D5E6CE] bg-surface-tint' : ''}`}>
                 <span className="font-medium">{session.data}</span>
                 {session.is_completed ? (
-                  <span className="text-xs font-semibold text-[#48614C]" title={session.completed_at ? formatDateTime(session.completed_at) : undefined}>
+                  <span className="text-xs font-semibold text-on-soft" title={session.completed_at ? formatDateTime(session.completed_at) : undefined}>
                     ✓ Concluído
                   </span>
                 ) : (

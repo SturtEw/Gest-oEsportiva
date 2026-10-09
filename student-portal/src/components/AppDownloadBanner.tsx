@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AppDownloadBanner — convite para instalar o app (APK), só em Android.
  *
  * Regras de exibição:
@@ -92,7 +92,7 @@ export function AppDownloadBanner() {
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#234E40] text-white">
           <Smartphone aria-hidden="true" className="size-5" />
         </div>
-        <p className="min-w-0 flex-1 text-sm leading-snug text-[#18372F]">
+        <p className="min-w-0 flex-1 text-sm leading-snug text-heading">
           Baixe nosso App para uma melhor experiência
         </p>
         <button
@@ -102,7 +102,7 @@ export function AppDownloadBanner() {
           title={apkReady ? 'Baixar o aplicativo' : 'O aplicativo ainda não está disponível'}
           className={apkReady
             ? 'flex shrink-0 items-center gap-1.5 rounded-xl bg-[#234E40] px-3 py-2 text-xs font-bold text-white transition active:scale-95'
-            : 'flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-xl bg-[#EAF0E5] px-3 py-2 text-xs font-bold text-[#66806D]'}
+            : 'flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-xl bg-surface-soft px-3 py-2 text-xs font-bold text-eyebrow'}
         >
           {apkReady ? <Download aria-hidden="true" className="size-4" /> : <Hourglass aria-hidden="true" className="size-4" />}
           {apkReady ? 'Baixar APK' : 'Em breve'}

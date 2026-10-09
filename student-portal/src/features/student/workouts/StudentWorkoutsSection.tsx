@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Student side of individual training: shows the plans prescribed to this
  * student, organized by date, with a clear "Marcar como concluído" toggle per
  * session. Completion records the timestamp and reaches the professor in
@@ -159,7 +159,7 @@ function PlanExecutionCard({ plan, hoje, canExecute, busySession, onToggle }: {
           {plan.sessoes.map((session) => {
             const isToday = session.data === hoje
             return (
-              <li key={session.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${session.is_completed ? 'border-[#D5E6CE] bg-[#F6FAF2]' : isToday ? 'border-primary/40 bg-secondary/40' : ''}`}>
+              <li key={session.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${session.is_completed ? 'border-[#D5E6CE] bg-surface-tint' : isToday ? 'border-primary/40 bg-secondary/40' : ''}`}>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{labelForDate(session.data)}{isToday ? ' · hoje' : ''}</p>
                   {session.is_completed && session.completed_at && (
@@ -179,7 +179,7 @@ function PlanExecutionCard({ plan, hoje, canExecute, busySession, onToggle }: {
                     {busySession === session.id ? 'Atualizando…' : session.is_completed ? 'Reabrir' : 'Marcar como concluído'}
                   </Button>
                 ) : (
-                  <span className={`text-xs font-semibold ${session.is_completed ? 'text-[#48614C]' : 'text-muted-foreground'}`}>
+                  <span className={`text-xs font-semibold ${session.is_completed ? 'text-on-soft' : 'text-muted-foreground'}`}>
                     {session.is_completed ? '✓ Concluído' : 'Pendente'}
                   </span>
                 )}

@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+﻿import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Timer, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { AppShell, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
@@ -275,7 +275,7 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
         }
       >
         {notice && (
-          <Alert className="mb-4 border-[#D5E6CE] bg-[#F6FAF2]">
+          <Alert className="mb-4 border-[#D5E6CE] bg-surface-tint">
             <AlertDescription className="flex items-center justify-between gap-3">
               {notice}
               <button type="button" onClick={() => setNotice(null)} aria-label="Fechar aviso" className="rounded p-1 hover:bg-black/5">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Award, Check, ChevronRight, Crown, EyeOff, LockKeyhole, Sparkles, Trophy } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -83,7 +83,7 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
     <section className="space-y-6" aria-labelledby="achievements-heading">
       <div>
         <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-[#937133]"><Sparkles className="size-4" />Suas vitórias, do seu jeito</p>
-        <h2 id="achievements-heading" className="type-title mt-2 text-3xl font-extrabold text-[#18372F]">Conquistas e pontos</h2>
+        <h2 id="achievements-heading" className="type-title mt-2 text-3xl font-extrabold text-heading">Conquistas e pontos</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Cada conquista é registrada pelo professor. Pontos antigos sem valor registrado não são calculados automaticamente.</p>
       </div>
 
@@ -121,7 +121,7 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
                   <li key={award.id} className="flex items-center gap-3 px-5 py-4 sm:px-6">
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF5DB] text-[#9A6D29]"><Crown className="size-5" /></span>
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{award.nome}</p><p className="mt-0.5 text-xs text-muted-foreground">Recebida em {formatDate(award.dataObtencao)}</p></div>
-                    <Badge variant="secondary" className="shrink-0 rounded-full bg-[#EAF0E5] text-[#3F6746]">{award.pontos === null ? 'Sem pontos registrados' : formatPoints(award.pontos)}</Badge>
+                    <Badge variant="secondary" className="shrink-0 rounded-full bg-surface-soft text-[#3F6746]">{award.pontos === null ? 'Sem pontos registrados' : formatPoints(award.pontos)}</Badge>
                   </li>
                 ))}
               </ul>
@@ -135,7 +135,7 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
             <CardDescription>Você escolhe se participa. Sua escolha pode ser alterada a qualquer momento.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 p-5 pt-2 sm:px-6 sm:pb-6">
-            <div className="flex items-start justify-between gap-4 rounded-2xl bg-[#F7F9F5] p-4">
+            <div className="flex items-start justify-between gap-4 rounded-2xl bg-surface-soft-2 p-4">
               <div className="min-w-0">
                 <p className="text-sm font-bold">Participar do ranking da turma</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">Ao participar, conquistas com pontos podem aparecer para os outros participantes.</p>
@@ -148,11 +148,11 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
                 className="mt-0.5"
               />
             </div>
-            {!canEditPreference && <p className="flex items-start gap-2 rounded-xl border border-[#E9E1CC] bg-[#FFFDF7] px-4 py-3 text-xs leading-5 text-[#78643E]"><LockKeyhole aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Somente o aluno, em sua própria conta, pode alterar esta preferência.</p>}
+            {!canEditPreference && <p className="flex items-start gap-2 rounded-xl border border-[#E9E1CC] bg-surface-warm px-4 py-3 text-xs leading-5 text-[#78643E]"><LockKeyhole aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Somente o aluno, em sua própria conta, pode alterar esta preferência.</p>}
 
             {!participates || forcedPrivate ? (
               <div className="rounded-2xl border border-dashed border-[#D8E1D5] px-5 py-7 text-center">
-                <div className="mx-auto flex size-11 items-center justify-center rounded-full bg-[#EAF0E5] text-[#55734D]"><EyeOff aria-hidden="true" className="size-5" /></div>
+                <div className="mx-auto flex size-11 items-center justify-center rounded-full bg-surface-soft text-muted-strong"><EyeOff aria-hidden="true" className="size-5" /></div>
                 <h3 className="mt-3 font-semibold">Sua participação está desativada</h3>
                 <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">Você não aparece no ranking e não vê conquistas compartilhadas de outros alunos. Seu histórico pessoal continua privado para você.</p>
               </div>
@@ -167,7 +167,7 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
                     const ownEntry = entry.nome === studentName || entry.nome.startsWith(`${studentName.split(' ')[0]} `)
                     const maxPoints = ranking[0]?.pontos || 1
                     return <li key={`${entry.posicao}-${entry.nome}`} className={`grid grid-cols-[30px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3 py-3 ${ownEntry ? 'bg-[#F0F5E9] ring-1 ring-[#D9E7CC]' : 'bg-[#FAFBF8]'}`}>
-                      <span className={`flex size-7 items-center justify-center rounded-full text-xs font-extrabold ${entry.posicao === 1 ? 'bg-[#F6EBCF] text-[#8D6B28]' : 'bg-white text-muted-foreground'}`}>{entry.posicao === 1 ? <Crown className="size-3.5" /> : entry.posicao}</span>
+                      <span className={`flex size-7 items-center justify-center rounded-full text-xs font-extrabold ${entry.posicao === 1 ? 'bg-[#F6EBCF] text-[#8D6B28]' : 'bg-card text-muted-foreground'}`}>{entry.posicao === 1 ? <Crown className="size-3.5" /> : entry.posicao}</span>
                       <div className="min-w-0"><p className="truncate text-sm font-semibold">{ownEntry ? 'Você' : entry.nome}</p><Progress aria-label={`${entry.pontos} pontos`} value={maxPoints > 0 ? entry.pontos / maxPoints * 100 : 0} className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#E6ECE1] [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-[#8DAA70]" /></div>
                       <span className="text-xs font-extrabold tabular-nums text-[#426848]">{formatPoints(entry.pontos)}</span>
                     </li>
@@ -186,7 +186,7 @@ export function AchievementSection({ alunoId, studentName, awards, participates,
             <DialogTitle className="font-display text-xl font-extrabold">Quer participar do ranking?</DialogTitle>
             <DialogDescription className="pt-1 leading-6">Suas conquistas com pontos poderão aparecer para alunos que também participam. As conquistas anteriores com pontos registrados passam a contar; valores antigos não informados continuam sem pontuação.</DialogDescription>
           </DialogHeader>
-          <ul className="space-y-2 rounded-2xl bg-[#F7F9F5] p-4 text-sm text-[#4D6155]">
+          <ul className="space-y-2 rounded-2xl bg-surface-soft-2 p-4 text-sm text-[#4D6155]">
             <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-[#668C5D]" />Sua escolha é reversível e pode ser desativada depois.</li>
             <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-[#668C5D]" />Só conquistas atribuídas pelo professor com pontos registrados entram na soma.</li>
             <li className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-[#668C5D]" />As posições mostram participantes que ativaram esta opção.</li>

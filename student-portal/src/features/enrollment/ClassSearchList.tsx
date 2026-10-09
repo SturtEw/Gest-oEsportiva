@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { Dumbbell, RefreshCw, Search, Send, Users } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -44,7 +44,7 @@ export function ClassSearchList({ query, onQueryChange, classes, loading, error,
             placeholder="Buscar por nome ou modalidade"
             aria-label="Buscar turma por nome ou modalidade"
             maxLength={60}
-            className="h-11 rounded-xl bg-white pl-9"
+            className="h-11 rounded-xl bg-card pl-9"
           />
         </div>
       </CardHeader>

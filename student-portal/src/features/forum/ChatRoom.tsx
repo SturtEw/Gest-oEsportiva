@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+﻿import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { CircleAlert, Loader2, Send, Users } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -96,8 +96,8 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
       {layout !== 'fill' && (
         <CardHeader className="py-3 border-b border-border/70">
           <div className="flex items-center gap-3">
-            <Avatar className="size-10 bg-[#EAF0E5]">
-              <AvatarFallback className="bg-[#EAF0E5] text-sm font-bold text-[#234E40]">{initials(turmaNome ?? 'T')}</AvatarFallback>
+            <Avatar className="size-10 bg-surface-soft">
+              <AvatarFallback className="bg-surface-soft text-sm font-bold text-primary">{initials(turmaNome ?? 'T')}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <CardTitle className="truncate font-display text-base">{turmaNome ?? 'Turma'}</CardTitle>
@@ -112,7 +112,7 @@ export function ChatRoom({ turmaId, turmaNome, totalMembros, myUserId, myRole, l
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto bg-[#FAFCF7] px-4 py-4"
+        className="min-h-0 flex-1 overflow-y-auto bg-surface-soft-2 px-4 py-4"
         role="log"
         aria-label={`Mensagens da turma ${turmaNome ?? ''}`}
         aria-live="polite"

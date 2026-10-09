@@ -1,4 +1,4 @@
-import { ArrowRight, Award, BookOpenCheck, CalendarCheck2, ChevronRight, MessageCircle, Sparkles } from 'lucide-react'
+﻿import { ArrowRight, Award, BookOpenCheck, CalendarCheck2, ChevronRight, MessageCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +34,7 @@ export function HomeDashboard({ snapshot, onOpenSection }: { snapshot: StudentPo
             <h1 id="home-title" className="type-title mt-1 text-3xl font-extrabold leading-tight sm:text-4xl">Seu percurso, no seu ritmo.</h1>
             <p className="mt-3 max-w-md text-sm leading-6 text-white/80">Acompanhe o que a escola registrou e pergunte ao professor quando precisar.</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Button type="button" onClick={() => onOpenSection('avaliacoes')} className="h-11 rounded-xl bg-[#D9EFAB] px-4 font-bold text-[#183C32] hover:bg-[#C7E78A]">Ver avaliações<ArrowRight aria-hidden="true" /></Button>
+              <Button type="button" onClick={() => onOpenSection('avaliacoes')} className="h-11 rounded-xl bg-accent-soft px-4 font-bold text-on-accent-soft hover:bg-[#C7E78A]">Ver avaliações<ArrowRight aria-hidden="true" /></Button>
               <Button type="button" variant="outline" onClick={() => onOpenSection('duvidas')} className="h-11 rounded-xl border-white/30 bg-white/10 px-4 text-white hover:bg-white/20 hover:text-white"><MessageCircle aria-hidden="true" />Perguntar ao professor</Button>
             </div>
           </div>
@@ -56,16 +56,16 @@ export function HomeDashboard({ snapshot, onOpenSection }: { snapshot: StudentPo
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="border-0 bg-white shadow-none ring-1 ring-border">
+          <Card className="border-0 bg-card shadow-none ring-1 ring-border">
             <CardContent className="flex h-full flex-col p-5">
-              <span className="flex size-10 items-center justify-center rounded-xl bg-[#EAF0E5] text-[#55734D]"><CalendarCheck2 aria-hidden="true" className="size-5" /></span>
+              <span className="flex size-10 items-center justify-center rounded-xl bg-surface-soft text-muted-strong"><CalendarCheck2 aria-hidden="true" className="size-5" /></span>
               <p className="mt-4 text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">Presenças registradas</p>
               <p className="mt-1 font-display text-2xl font-extrabold">{attendanceCount ? `${presentCount} de ${attendanceCount}` : '—'}</p>
               <p className="mt-1 text-xs text-muted-foreground">{attendanceCount ? 'chamadas informadas' : 'Ainda sem chamadas'}</p>
               <Button type="button" variant="link" className="mt-auto justify-start px-0 pt-4 text-sm font-bold" onClick={() => onOpenSection('presencas')}>Ver presenças<ArrowRight aria-hidden="true" /></Button>
             </CardContent>
           </Card>
-          <Card className="border-0 bg-white shadow-none ring-1 ring-border">
+          <Card className="border-0 bg-card shadow-none ring-1 ring-border">
             <CardContent className="flex h-full flex-col p-5">
               <span className="flex size-10 items-center justify-center rounded-xl bg-[#FFF5DB] text-[#956A20]"><Award aria-hidden="true" className="size-5" /></span>
               <p className="mt-4 text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">Conquistas pessoais</p>
@@ -76,14 +76,14 @@ export function HomeDashboard({ snapshot, onOpenSection }: { snapshot: StudentPo
           </Card>
         </div>
 
-        <Card className="border-0 bg-[#EAF0E5] shadow-none ring-0">
+        <Card className="border-0 bg-surface-soft shadow-none ring-0">
           <CardHeader className="flex-row items-start justify-between gap-4 p-5 pb-3">
-            <div><CardTitle className="flex items-center gap-2 font-display text-lg font-bold text-[#234E40]"><BookOpenCheck aria-hidden="true" className="size-5" />Um passo de cada vez</CardTitle><CardDescription className="mt-1 text-[#5E7463]">Seu registro mais recente</CardDescription></div>
+            <div><CardTitle className="flex items-center gap-2 font-display text-lg font-bold text-primary"><BookOpenCheck aria-hidden="true" className="size-5" />Um passo de cada vez</CardTitle><CardDescription className="mt-1 text-[#5E7463]">Seu registro mais recente</CardDescription></div>
             {latestAssessment && <Badge variant="outline" className="shrink-0 rounded-full border-[#C7D8BF] bg-white/70 text-[#426848]">{formatBimester(latestAssessment.bimestre)}</Badge>}
           </CardHeader>
           <CardContent className="p-5 pt-1">
             {latestAssessment ? <>
-              <p className="font-display text-2xl font-extrabold text-[#234E40]">Média {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(latestAssessment.media)}<span className="text-sm font-semibold text-[#66806D]">/10</span></p>
+              <p className="font-display text-2xl font-extrabold text-primary">Média {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(latestAssessment.media)}<span className="text-sm font-semibold text-eyebrow">/10</span></p>
               <p className="mt-1 flex items-center gap-1.5 text-xs text-[#5E7463]">Atualizada em {formatDate(latestAssessment.dataAtualizacao ?? latestAssessment.dataAvaliacao)}</p>
               {latestAssessment.observacoes && <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#475E4E]">“{latestAssessment.observacoes}”</p>}
             </> : <p className="text-sm leading-6 text-[#5E7463]">Quando sua avaliação for registrada, você verá a média, os cinco critérios e a mensagem do professor aqui.</p>}

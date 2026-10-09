@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MyClassesSection — multi-turmas no portal do aluno.
  *
  * Mostra TODAS as turmas do aluno (turmas_ids), marca a principal (turma_id) e
@@ -101,7 +101,7 @@ export function MyClassesSection({ alunoId, revision, readOnly, onChanged }: Pro
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="flex items-center gap-2 font-display text-base font-bold text-heading">
-                      <School aria-hidden="true" className="size-4 text-[#234E40] dark:text-emerald-400" />
+                      <School aria-hidden="true" className="size-4 text-primary dark:text-emerald-400" />
                       {turma.nome}
                     </CardTitle>
                     {principal && <Badge className="shrink-0 rounded-full"><Check aria-hidden="true" className="size-3" /> Principal</Badge>}

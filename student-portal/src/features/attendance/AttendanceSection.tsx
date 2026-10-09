@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { CalendarCheck2, Check, Clock3, Filter, HelpCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +13,7 @@ const labels: Record<AttendanceStatus, string> = {
 }
 
 const styles: Record<AttendanceStatus, string> = {
-  presente: 'bg-[#EAF3E5] text-[#3F6E47] ring-[#D6E5D0]',
+  presente: 'bg-surface-tint text-on-soft ring-[#D6E5D0]',
   ausente: 'bg-[#FFF0E9] text-[#9B5737] ring-[#F2D8C8]',
   justificada: 'bg-[#F1EEF7] text-[#63547F] ring-[#E2DDEE]',
 }
@@ -25,7 +25,7 @@ function AttendanceList({ items }: { items: StudentAttendance[] }) {
       const status = item.status
       return <li key={`${item.chamada_id}-${item.turma_id}`} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-1">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#EAF0E5] text-[#55734D]"><CalendarCheck2 aria-hidden="true" className="size-5" /></div>
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-soft text-muted-strong"><CalendarCheck2 aria-hidden="true" className="size-5" /></div>
           <div className="min-w-0"><p className="font-semibold">{formatDate(item.data_aula)}</p><p className="mt-0.5 text-xs text-muted-foreground">Chamada da turma</p></div>
         </div>
         {status ? <Badge variant="outline" className={`h-7 gap-1.5 rounded-full px-3 ring-1 ring-inset ${styles[status]}`}><Check aria-hidden="true" className="size-3" />{labels[status]}</Badge> : <Badge variant="outline" className="h-7 gap-1.5 rounded-full px-3 text-muted-foreground"><HelpCircle aria-hidden="true" className="size-3" />Não informado</Badge>}
@@ -52,8 +52,8 @@ export function AttendanceSection({ attendance }: { attendance: StudentAttendanc
   return (
     <section className="space-y-5" aria-labelledby="attendance-title">
       <div>
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-[#66806D]"><CalendarCheck2 className="size-4" />Seus registros</p>
-        <h2 id="attendance-title" className="type-title mt-2 text-3xl font-extrabold text-[#18372F]">Presenças</h2>
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-eyebrow"><CalendarCheck2 className="size-4" />Seus registros</p>
+        <h2 id="attendance-title" className="type-title mt-2 text-3xl font-extrabold text-heading">Presenças</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Veja somente os seus registros de chamada. Um campo sem registro aparece como “Não informado”, não como falta.</p>
       </div>
       <Card className="border-0 shadow-none ring-1 ring-border">
@@ -61,7 +61,7 @@ export function AttendanceSection({ attendance }: { attendance: StudentAttendanc
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div><CardTitle className="flex items-center gap-2 font-display text-xl font-bold"><Filter className="size-5 text-[#668C5D]" />Histórico de chamadas</CardTitle><CardDescription className="mt-1">{attendance.length} registros encontrados</CardDescription></div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-[#EAF3E5] px-2.5 py-1 font-semibold text-[#3F6E47]">{counts.presente} presentes</span>
+              <span className="rounded-full bg-surface-tint px-2.5 py-1 font-semibold text-on-soft">{counts.presente} presentes</span>
               <span className="rounded-full bg-[#FFF0E9] px-2.5 py-1 font-semibold text-[#9B5737]">{counts.ausente} ausentes</span>
               <span className="rounded-full bg-[#F1EEF7] px-2.5 py-1 font-semibold text-[#63547F]">{counts.justificada} justificadas</span>
             </div>
