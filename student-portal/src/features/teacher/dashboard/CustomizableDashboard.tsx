@@ -27,7 +27,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from 'cn'
 import type { TeacherOverview } from '@/lib/types'
-import type { LayoutBreakpoint, WidgetInstance, WidgetKind } from './layout-types'
+import type { WidgetInstance, WidgetKind, WidgetLayout } from './layout-types'
+import { BREAKPOINT_COLS, packLayout } from './layout-derive'
 import { MetricsHeaderPanel } from './MetricsHeaderPanel'
 import type { KpiTile } from './KpiCard'
 import { useDashboardLayout } from './useDashboardLayout'
@@ -36,14 +37,16 @@ import { renderWidgetBody } from './widgets/WidgetRenderer'
 import { WidgetShell } from './widgets/WidgetShell'
 
 /**
- * Breakpoints are duplicated from the layout vocabulary into the values the grid needs
- * (min width in px, column count). Keeping them together here means the two can only
- * be changed in one place.
+ * Breakpoints are the pixel widths at which the grid switches column count. The counts
+ * themselves live in BREAKPOINT_COLS (`layout-derive`) so the grid and the derivation
+ * that feeds it can never disagree.
  */
-const BREAKPOINTS: Record<LayoutBreakpoint, number> = { lg: 1024, md: 768, sm: 0 }
-const COLS: Record<LayoutBreakpoint, number> = { lg: 12, md: 8, sm: 4 }
+const BREAKPOINTS = { lg: 1024, md: 768, sm: 0 }
 const ROW_HEIGHT = 44
-const MARGIN: [number, number] = [16, 16]
+// Gaps eat a phone's width disproportionately: 16px gutters on a 360px screen is nearly
+// a tenth of the row. The narrow breakpoints get tighter margins for that reason.
+const MARGIN = { lg: [16, 16] as const, md: [12, 12] as const, sm: [10, 10] as const }
+const CONTAINER_PADDING = { lg: [0, 0] as const, md: [0, 0] as const, sm: [0, 0] as const }
 
 export function CustomizableDashboard({
   overview,
@@ -69,20 +72,26 @@ export function CustomizableDashboard({
   const kpis = useMemo<KpiTile[]>(() => buildKpis(overview), [overview])
 
   /**
-   * The grid needs one entry per breakpoint, but the layout only stores the ones the
-   * professor actually edited. Missing breakpoints inherit the `lg` arrangement, so a
-   * professor who only ever arranged the desktop panel still gets a sane phone layout.
+   * The grid needs one entry per breakpoint. `lg` is the professor's own arrangement;
+   * `md`/`sm` are repacked from it with `packLayout` rather than copied verbatim,
+   * because the desktop coordinates do not fit the narrower column counts (a card at
+   * x:6 overflows a 4-column phone grid and renders past the right edge of the screen).
    */
   const gridLayouts = useMemo(() => {
-    // react-grid-layout v2 models a layout as `readonly LayoutItem[]`, so the mapped
-    // array is built into that shape rather than an object literal per item.
-    const build = (breakpoint: LayoutBreakpoint): Layout =>
-      layout.widgets.map((widget) => {
-        const placement = widget.layouts[breakpoint] ?? widget.layouts.lg ?? widget.layouts.md ?? { x: 0, y: 0, w: 4, h: 4 }
-        return { i: widget.id, x: placement.x, y: placement.y, w: placement.w, h: placement.h }
-      })
+    const toGrid = (entries: Array<{ id: string; layout: WidgetLayout }>): Layout =>
+      entries.map(({ id, layout }) => ({ i: id, x: layout.x, y: layout.y, w: layout.w, h: layout.h }))
 
-    return { lg: build('lg'), md: build('md'), sm: build('sm') }
+    // lg keeps its stored coordinates exactly, so the desktop layout is untouched.
+    const desktop: Array<{ id: string; layout: WidgetLayout }> = layout.widgets.map((widget) => ({
+      id: widget.id,
+      layout: widget.layouts.lg ?? { x: 0, y: 0, w: BREAKPOINT_COLS.lg, h: 4 },
+    }))
+
+    return {
+      lg: toGrid(desktop),
+      md: toGrid(packLayout(layout.widgets, BREAKPOINT_COLS.md)),
+      sm: toGrid(packLayout(layout.widgets, BREAKPOINT_COLS.sm)),
+    }
     // `layout.widgets` identity changes on every mutation, which is exactly when the
     // grid must be rebuilt.
   }, [layout.widgets])
@@ -189,10 +198,10 @@ export function CustomizableDashboard({
               className={cn('w-full', editing && 'rounded-2xl bg-muted/30 p-2 ring-1 ring-dashed ring-border')}
               layouts={gridLayouts}
               breakpoints={BREAKPOINTS}
-              cols={COLS}
+              cols={BREAKPOINT_COLS}
               rowHeight={ROW_HEIGHT}
               margin={MARGIN}
-              containerPadding={[0, 0]}
+              containerPadding={CONTAINER_PADDING}
               // Outside edit mode the only interaction left is clicking links inside the
               // cards, which is why drag and resize are switched off together.
               dragConfig={{ enabled: editing, handle: '.widget-drag-handle', cancel: 'button, a', threshold: 3, bounded: false }}
