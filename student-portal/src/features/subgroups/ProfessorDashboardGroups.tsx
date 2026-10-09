@@ -7,8 +7,8 @@
  * com `saida` nula), nunca no cliente.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { CircleAlert, LogOut, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CircleAlert, LogOut, Plus, RefreshCw, Search, Trash2, Users, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePollingRevision } from '@/hooks/usePollingRevision'
 import { api } from '@/lib/api'
+import { AnalyticsPanel } from './AnalyticsPanel'
 import type { AttendanceRecord, SubgroupSummary } from '@/lib/api/subgroups'
 
 interface Props {
@@ -24,6 +25,8 @@ interface Props {
   revision: number
   /** Realtime is pushing changes; otherwise the component polls. */
   live: boolean
+  /** Alunos da turma, para o filtro individual das estatísticas. */
+  alunos?: { id: string; nome: string }[]
 }
 
 /** Skeletons at module scope: stable element references, never rebuilt per render. */
@@ -35,14 +38,19 @@ const CardsLoading = (
   </div>
 )
 
-export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
+export function ProfessorDashboardGroups({ turmaId, revision, live, alunos = [] }: Props) {
   const [subgroups, setSubgroups] = useState<SubgroupSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
+  // Busca global da tela de Aulas: filtra os subgrupos por nome/descrição.
+  const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Grupo aberto no modal dedicado de estatísticas (Progressive Disclosure:
+  // os gráficos só são buscados/renderizados quando o professor clica).
+  const [statsGroup, setStatsGroup] = useState<SubgroupSummary | null>(null)
   // Sem realtime empurrando, o polling cobre a lacuna (mesmo padrão das outras seções).
   const tick = usePollingRevision(!live)
 
@@ -61,6 +69,12 @@ export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
 
   // Realtime invalidation (revision) and polling tick share this refetch.
   useEffect(() => { void load() }, [load, revision, tick])
+
+  const visibleSubgroups = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return subgroups
+    return subgroups.filter((item) => item.nome.toLowerCase().includes(term) || (item.descricao ?? '').toLowerCase().includes(term))
+  }, [subgroups, search])
 
   const create = async () => {
     if (name.trim().length < 2) return
@@ -119,9 +133,19 @@ export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 p-4">
-          <Input placeholder="Nome da aula (ex.: Judô)" value={name} onChange={(event) => setName(event.target.value)} className="w-56" maxLength={60} />
-          <Input placeholder="Descrição (opcional)" value={description} onChange={(event) => setDescription(event.target.value)} className="w-64" maxLength={500} />
-          <Button onClick={() => void create()} disabled={creating || name.trim().length < 2}>
+          <div className="relative min-w-56 flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar subgrupo por nome ou descrição…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Buscar subgrupo"
+              className="h-10 rounded-xl pl-9 focus-visible:ring-2 focus-visible:ring-ring/50"
+            />
+          </div>
+          <Input placeholder="Nome da aula (ex.: Judô)" value={name} onChange={(event) => setName(event.target.value)} className="h-10 w-52 rounded-xl" maxLength={60} />
+          <Input placeholder="Descrição (opcional)" value={description} onChange={(event) => setDescription(event.target.value)} className="h-10 w-56 rounded-xl" maxLength={500} />
+          <Button className="h-10 rounded-xl" onClick={() => void create()} disabled={creating || name.trim().length < 2}>
             <Plus aria-hidden="true" /> Criar aula
           </Button>
         </CardContent>
@@ -129,13 +153,13 @@ export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
 
       {loading && subgroups.length === 0 ? (
         CardsLoading
-      ) : subgroups.length === 0 ? (
+      ) : visibleSubgroups.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhuma aula criada ainda. Crie subgrupos como Judô, Natação ou Futsal.
+          {search ? `Nenhuma aula encontrada para “${search}”.` : 'Nenhuma aula criada ainda. Crie subgrupos como Judô, Natação ou Futsal.'}
         </p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          {subgroups.map((subgroup) => (
+          {visibleSubgroups.map((subgroup) => (
             <Card key={subgroup.id} className={subgroup.status === 'inativo' ? 'opacity-60' : undefined}>
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -161,6 +185,7 @@ export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
 
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => setSelectedId(selectedId === subgroup.id ? null : subgroup.id)}>Presenças</Button>
+                  <Button variant="outline" size="sm" onClick={() => setStatsGroup(subgroup)}>Estatísticas</Button>
                   <Button variant="outline" size="sm" onClick={() => void toggleStatus(subgroup)}>
                     {subgroup.status === 'ativo' ? 'Desativar' : 'Ativar'}
                   </Button>
@@ -175,6 +200,31 @@ export function ProfessorDashboardGroups({ turmaId, revision, live }: Props) {
       )}
 
       {selectedId && <AttendancePanel subgroupId={selectedId} revision={revision} />}
+
+      {/* Modal de estatísticas do grupo: gráficos carregados SÓ ao abrir. */}
+      {statsGroup && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Estatísticas de ${statsGroup.nome}`}
+          onClick={(event) => { if (event.target === event.currentTarget) setStatsGroup(null) }}
+        >
+          <div className="w-full max-w-5xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-eyebrow">Estatísticas do grupo</p>
+                <h3 className="font-display text-xl font-bold text-heading">{statsGroup.nome}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">Movimentação, tempo médio e horários de pico desta aula.</p>
+              </div>
+              <Button variant="ghost" size="icon" aria-label="Fechar estatísticas" onClick={() => setStatsGroup(null)}>
+                <X aria-hidden="true" />
+              </Button>
+            </div>
+            <AnalyticsPanel turmaId={turmaId} alunos={alunos} subgroupId={statsGroup.id} groupOnly />
+          </div>
+        </div>
+      )}
     </section>
   )
 }

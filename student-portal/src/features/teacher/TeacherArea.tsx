@@ -1,6 +1,6 @@
 ﻿import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Timer, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
-import { AppShell, type NavItem } from '@/components/AppShell'
+import { CalendarDays, CircleHelp, ClipboardList, Dumbbell, Flag, Home, LayoutDashboard, MessageCircle, MessagesSquare, Pencil, Send, Timer, Trophy, UserPlus, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { AppShell, type NavEntry, type NavItem } from '@/components/AppShell'
 import { PageHeading } from '@/components/PageHeading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +25,6 @@ import { RoleSelector } from '@/components/RoleSelector'
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary'
 import { TeacherActivitiesView, TeacherEnrollmentPanel, TeacherPrescribedWorkouts, ForumView, TeacherWorkoutsView, prefetchTeacherView } from './sections'
 import { ProfessorDashboardGroups } from '@/features/subgroups/ProfessorDashboardGroups'
-import { AnalyticsPanel } from '@/features/subgroups/AnalyticsPanel'
 import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
 import { AppDownloadBanner } from '@/components/AppDownloadBanner'
@@ -164,20 +163,35 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
     [students, studentQuery],
   )
 
-  const nav: NavItem[] = useMemo(() => {
+  const nav: NavEntry[] = useMemo(() => {
     const item = (id: View, extra?: Partial<NavItem>): NavItem => ({ id, label: VIEWS[id].label, short: VIEWS[id].short, icon: VIEWS[id].icon, ...extra })
+    // Progressive Disclosure: 5 categorias expansíveis no lugar de 11 itens soltos.
+    // Nenhuma view foi removida — todas continuam alcançáveis dentro do grupo.
     return [
-      item('dashboard'),
-      item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
-      item('atividades'),
-      item('aulas'),
-      item('workouts'),
-      item('prescribed'),
-  item('forum'),
-      item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
-      item('alunos'),
-      item('agenda'),
-      item('conta'),
+      {
+        id: 'inicio', label: 'Início', icon: Home,
+        items: [item('dashboard'), item('agenda')],
+      },
+      {
+        id: 'gestao', label: 'Gestão', icon: Users,
+        items: [
+          item('turmas', { badge: classes.length || undefined, badgeVariant: 'emerald' }),
+          item('alunos'),
+          item('convites', { badge: enrollment.pendingCount || undefined, badgeVariant: 'amber' }),
+        ],
+      },
+      {
+        id: 'atividades-treinos', label: 'Atividades & Treinos', icon: Dumbbell,
+        items: [item('atividades'), item('aulas'), item('workouts'), item('prescribed')],
+      },
+      {
+        id: 'comunicacao', label: 'Comunicação', icon: MessagesSquare,
+        items: [item('forum')],
+      },
+      {
+        id: 'config', label: 'Configurações', icon: UserRound,
+        items: [item('conta')],
+      },
     ]
   }, [classes.length, enrollment.pendingCount])
   const meta = VIEWS[view]
@@ -419,12 +433,12 @@ export function TeacherArea({ userId, name, onLogout }: { userId: string; name: 
                   {view === 'atividades' && <TeacherActivitiesView revision={revision} live={connection.status === 'live'} readOnly={isImpersonating} onNotice={setNotice} />}
 
                   {view === 'aulas' && (
-                    <div className="space-y-8">
-                      <ProfessorDashboardGroups turmaId={classes[0]?.id ?? ''} revision={revision} live={connection.status === 'live'} />
-                      {classes[0] && (
-                        <AnalyticsPanel turmaId={classes[0].id} alunos={students.filter((student) => student.turma_id === classes[0].id).map((student) => ({ id: student.id, nome: student.nome }))} />
-                      )}
-                    </div>
+                    <ProfessorDashboardGroups
+                      turmaId={classes[0]?.id ?? ''}
+                      revision={revision}
+                      live={connection.status === 'live'}
+                      alunos={students.filter((student) => student.turma_id === classes[0]?.id).map((student) => ({ id: student.id, nome: student.nome }))}
+                    />
                   )}
 
         {view === 'workouts' && <TeacherWorkoutsView students={students} revision={revision} readOnly={isImpersonating} onNotice={setNotice} />}

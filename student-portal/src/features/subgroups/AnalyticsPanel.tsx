@@ -24,6 +24,10 @@ import { api, type AnalyticsResumo, type DailyPoint, type HourPoint, type Studen
 interface Props {
   turmaId: string
   alunos: { id: string; nome: string }[]
+  /** Quando informado, as estatísticas ficam presas a ESTE subgrupo (modal). */
+  subgroupId?: string
+  /** Esconde o seletor de aluno e a tabela individual (visão focada no grupo). */
+  groupOnly?: boolean
 }
 
 const axisStyle = { fontSize: 11, fill: 'var(--muted-foreground)' }
@@ -49,8 +53,8 @@ function formatDate(iso: string): string {
   return `${day}/${month}`
 }
 
-export function AnalyticsPanel({ turmaId, alunos }: Props) {
-  const [subgroupId, setSubgroupId] = useState<string>('all')
+export function AnalyticsPanel({ turmaId, alunos, subgroupId: lockedSubgroupId, groupOnly }: Props) {
+  const [subgroupId, setSubgroupId] = useState<string>(lockedSubgroupId ?? 'all')
   const [resumo, setResumo] = useState<AnalyticsResumo | null>(null)
   const [daily, setDaily] = useState<DailyPoint[]>([])
   const [hours, setHours] = useState<HourPoint[]>([])
@@ -208,7 +212,8 @@ export function AnalyticsPanel({ turmaId, alunos }: Props) {
         </Card>
       </div>
 
-      {/* Visão individual */}
+      {/* Visão individual (oculta quando o painel é focado em UM grupo) */}
+      {!groupOnly && (
       <Card className="rounded-2xl border-border shadow-lg shadow-slate-200/50 dark:bg-card dark:shadow-black/30">
         <CardHeader className="pb-3">
           <CardTitle className="font-display text-base font-bold text-heading">Histórico individual</CardTitle>
@@ -270,6 +275,7 @@ export function AnalyticsPanel({ turmaId, alunos }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
     </section>
   )
 }

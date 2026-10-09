@@ -7,7 +7,7 @@
  * amber/coral for alerts, blue for info.
  */
 import { useEffect, useRef, useState, type ComponentType } from 'react'
-import { LogOut, Menu, X, Bell, BellRing } from 'lucide-react'
+import { LogOut, Menu, X, Bell, BellRing, ChevronDown } from 'lucide-react'
 import { ConnectionStatus } from '@/components/ConnectionStatus'
 import { Button } from '@/components/ui/button'
 import type { ConnectionStatus as ConnectionStatusValue } from '@/lib/types'
@@ -39,8 +39,35 @@ export interface NavItem {
   badgeVariant?: 'emerald' | 'amber' | 'coral' | 'blue'
 }
 
+/**
+ * Grupo expansível do menu (Progressive Disclosure).
+ *
+ * `nav` aceita itens planos OU grupos — assim as telas que ainda passam uma
+ * lista simples continuam funcionando sem alteração. O grupo guarda a seção:
+ * Início, Gestão, Atividades & Treinos, Comunicação, Configurações…
+ */
+export interface NavGroup {
+  id: string
+  label: string
+  icon: ComponentType<{ className?: string }>
+  items: NavItem[]
+}
+
+export type NavEntry = NavItem | NavGroup
+
+/** Um entry é grupo quando traz `items`. */
+export function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return Array.isArray((entry as NavGroup).items)
+}
+
+/** Achata os entries para achar o item ativo (cabeçalho, barra mobile). */
+export function flattenNav(entries: NavEntry[]): NavItem[] {
+  return entries.flatMap((entry) => (isNavGroup(entry) ? entry.items : [entry]))
+}
+
 export interface AppShellProps {
-  nav: NavItem[]
+  /** Itens planos ou grupos expansíveis (NavGroup). */
+  nav: NavEntry[]
   active: string
   onNavigate: (id: string) => void
   /** Called on menu hover/focus/press, before the click: lets a lazy view start downloading. */
@@ -95,6 +122,9 @@ export function AppShell({
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
+  // Grupos abertos no menu lateral. O grupo do item ativo abre sozinho, para o
+  // usuário sempre enxergar onde está (Progressive Disclosure + contexto).
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const isDesktop = useIsDesktop()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const notificationButtonRef = useRef<HTMLButtonElement>(null)
@@ -138,8 +168,19 @@ export function AppShell({
     }
   }, [menuOpen])
 
-  const activeItem = nav.find((item) => item.id === active)
-  const mobileNav = nav.slice(0, MOBILE_NAV_LIMIT)
+  const flatNav = flattenNav(nav)
+  const activeItem = flatNav.find((item) => item.id === active)
+  const mobileNav = flatNav.slice(0, MOBILE_NAV_LIMIT)
+
+  // Ao navegar (ou ao trocar de view), garante que o grupo do item ativo esteja aberto.
+  useEffect(() => {
+    const owner = nav.find((entry) => isNavGroup(entry) && entry.items.some((item) => item.id === active))
+    if (owner && isNavGroup(owner)) {
+      setOpenGroups((current) => (current[owner.id] ? current : { ...current, [owner.id]: true }))
+    }
+  }, [active, nav])
+
+  const toggleGroup = (id: string) => setOpenGroups((current) => ({ ...current, [id]: !current[id] }))
 
   const handleNavClick = (id: string) => {
     onNavigate(id)
@@ -213,6 +254,101 @@ export function AppShell({
     )
   }
 
+  /** Sub-item dentro de um grupo: indentado e com indicador de ativo. */
+  const renderGroupItem = (item: NavItem) => {
+    const Icon = item.icon
+    const isActive = item.id === active
+    const badgeVariant = item.badgeVariant || 'coral'
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => handleNavClick(item.id)}
+        onPointerEnter={() => onPrefetch?.(item.id)}
+        onFocus={() => onPrefetch?.(item.id)}
+        aria-current={isActive ? 'page' : undefined}
+        className={cn(
+          'group/item flex w-full items-center gap-2.5 rounded-lg py-2 pl-2.5 pr-2 text-left text-[13px] transition-all duration-300 ease-in-out',
+          isActive
+            ? 'bg-sidebar-primary font-semibold text-sidebar-primary-foreground shadow-sm'
+            : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            'h-4 w-0.5 shrink-0 rounded-full transition-colors duration-300',
+            isActive ? 'bg-sidebar-primary-foreground' : 'bg-sidebar-foreground/25 group-hover/item:bg-sidebar-foreground/50',
+          )}
+        />
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+        <span className="flex-1 truncate">{item.label}</span>
+        {item.badge ? (
+          <span
+            className={cn(
+              'flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+              SIDEBAR_BADGE_VARIANTS[badgeVariant],
+            )}
+            aria-label={`${item.badge} itens pendentes em ${item.label}`}
+          >
+            {item.badge > 99 ? '99+' : item.badge}
+          </span>
+        ) : null}
+      </button>
+    )
+  }
+
+  /** Categoria expansível: header com ícone, chevron e conteúdo animado. */
+  const renderNavGroup = (group: NavGroup) => {
+    const Icon = group.icon
+    const isOpen = Boolean(openGroups[group.id])
+    const hasActive = group.items.some((item) => item.id === active)
+    const groupBadge = group.items.reduce((total, item) => total + (item.badge ?? 0), 0)
+    return (
+      <div key={group.id} className="pt-1">
+        <button
+          type="button"
+          onClick={() => toggleGroup(group.id)}
+          aria-expanded={isOpen}
+          aria-controls={`nav-group-${group.id}`}
+          className={cn(
+            'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-[0.1em] transition-all duration-300 ease-in-out',
+            hasActive && !isOpen
+              ? 'text-sidebar-primary'
+              : 'text-sidebar-foreground/55 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/85',
+          )}
+        >
+          <Icon className="size-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1 truncate">{group.label}</span>
+          {!isOpen && groupBadge > 0 && (
+            <span className="flex min-w-5 items-center justify-center rounded-full bg-coral-500/20 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-coral-500">
+              {groupBadge > 99 ? '99+' : groupBadge}
+            </span>
+          )}
+          {/* Chevron: baixo quando fechado, gira 180° para cima quando aberto. */}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn('size-4 shrink-0 transition-transform duration-300 ease-in-out', isOpen && 'rotate-180')}
+          />
+        </button>
+
+        <div
+          id={`nav-group-${group.id}`}
+          className={cn(
+            'grid transition-all duration-300 ease-in-out',
+            isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-border/70 pl-2">
+              {group.items.map((item) => renderGroupItem(item))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     // From lg up the sidebar is a sticky flex column (as in the student area), not
     // fixed: anything rendered above the shell (impersonation banners) used to slide
@@ -256,10 +392,11 @@ export function AppShell({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-3" aria-label="Menu de navegação">
-          {nav.map((item) => {
-            const isActive = item.id === active
-            return renderNavItem(item, isActive, false)
-          })}
+          {nav.map((entry) =>
+            isNavGroup(entry)
+              ? renderNavGroup(entry)
+              : renderNavItem(entry, entry.id === active, false),
+          )}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">

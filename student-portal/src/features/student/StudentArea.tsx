@@ -22,10 +22,11 @@ import { useStudentPortal } from '@/hooks/useStudentPortal'
 import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
 import { MyClassesSection } from '@/features/enrollment/MyClassesSection'
+import { SidebarNav, type StudentNavGroup } from '@/components/SidebarNav'
 import { initials } from '@/lib/formatters'
 import type { LinkedChild, PortalSection, SessionUser } from '@/lib/types'
 
-const sections: { id: PortalSection; label: string; short: string; icon: typeof Home }[] = [
+const SECTIONS: { id: PortalSection; label: string; short: string; icon: typeof Home }[] = [
   { id: 'inicio', label: 'Início', short: 'Início', icon: Home },
   { id: 'turma', label: 'Minha turma', short: 'Turma', icon: Users },
   { id: 'minhas-turmas', label: 'Minhas turmas', short: 'Turmas', icon: School },
@@ -42,6 +43,32 @@ const sections: { id: PortalSection; label: string; short: string; icon: typeof 
   { id: 'forum', label: 'Fórum da turma', short: 'Fórum', icon: MessagesSquare },
   { id: 'conta', label: 'Minha conta', short: 'Conta', icon: Settings },
 ]
+
+const sectionById = (id: PortalSection) => SECTIONS.find((section) => section.id === id)!
+
+/** Grupos expansíveis do menu do aluno (Progressive Disclosure). */
+const NAV_GROUPS: StudentNavGroup[] = [
+  { id: 'inicio', label: 'Início', icon: Home, items: [sectionById('inicio'), sectionById('conta')] },
+  {
+    id: 'aprendizado', label: 'Meu Aprendizado', icon: BookOpenCheck,
+    items: [sectionById('turma'), sectionById('minhas-turmas'), sectionById('atividades'), sectionById('aulas')],
+  },
+  {
+    id: 'treinos', label: 'Meus Treinos', icon: Dumbbell,
+    items: [sectionById('meu-treino'), sectionById('treinamentos')],
+  },
+  {
+    id: 'desempenho', label: 'Desempenho', icon: Award,
+    items: [sectionById('presencas'), sectionById('avaliacoes'), sectionById('conquistas')],
+  },
+  {
+    id: 'comunicacao', label: 'Comunicação & Suporte', icon: MessagesSquare,
+    items: [sectionById('comunicados'), sectionById('duvidas'), sectionById('forum'), sectionById('registros')],
+  },
+]
+
+// A barra inferior mobile usa os destinos mais frequentes (achatados dos grupos).
+const MOBILE_TAB_IDS: PortalSection[] = ['inicio', 'presencas', 'avaliacoes', 'conquistas', 'atividades', 'duvidas']
 
 /** Placeholder while a section's chunk downloads (first visit only). */
 function SectionSkeleton() {
@@ -123,7 +150,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     <ForumWidget myUserId={user.id} myRole="aluno" live={connection.status === 'live'} revision={forumRevision} />
   ) : null
   const goTo = useCallback((section: PortalSection) => { setActiveSection(section); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }, [])
-  const currentSection = sections.find((section) => section.id === activeSection) ?? sections[0]
+  const currentSection = SECTIONS.find((section) => section.id === activeSection) ?? SECTIONS[0]
   const snapshot = portal.snapshot
 
   const setStudentRankingPreference = useCallback(async (value: boolean) => {
@@ -168,7 +195,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
       <aside className="sticky top-0 hidden h-screen w-[252px] shrink-0 flex-col bg-sidebar px-4 py-6 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-3 px-2"><span className="flex size-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 font-display text-sm font-extrabold text-[#D9EFAB]">GE</span><span><span className="block font-display text-[13px] font-extrabold tracking-wide">GESTÃO ESPORTIVA</span><span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-white/55">escolar</span></span></div>
         <p className="mb-3 mt-10 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">{user.tipo === 'responsavel' ? 'Área da família' : 'Área do aluno'}</p>
-        <nav aria-label="Navegação principal" className="flex flex-1 flex-col gap-1 overflow-y-auto">{sections.map((section) => { const Icon = section.icon; return <Button key={section.id} variant="ghost" onClick={() => goTo(section.id)} onPointerEnter={() => prefetchSection(section.id)} onFocus={() => prefetchSection(section.id)} aria-current={activeSection === section.id ? 'page' : undefined} className={`min-h-11 w-full justify-start gap-3 rounded-xl px-3 text-left text-[13px] ${activeSection === section.id ? 'bg-accent-soft font-bold text-on-accent-soft hover:bg-accent-soft' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}><Icon aria-hidden="true" className="size-[18px] shrink-0" />{section.label}</Button> })}</nav>
+        <nav aria-label="Navegação principal" className="flex-1 overflow-y-auto"><SidebarNav groups={NAV_GROUPS} active={activeSection} onNavigate={(id) => goTo(id as PortalSection)} onPrefetch={(id) => prefetchSection(id as PortalSection)} layout="sidebar" /></nav>
         <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.06] p-3"><div className="flex items-center gap-3"><Avatar className="size-9 bg-[#E8CDA5] text-[#4B3526]"><AvatarFallback className="bg-[#E8CDA5] text-xs font-bold text-[#4B3526]">{initials(user.nome)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold">{user.nome}</p><p className="mt-0.5 text-[11px] text-white/55">{user.tipo === 'responsavel' ? 'Responsável' : 'Aluno'}</p></div><Button variant="ghost" size="icon-sm" aria-label="Sair da conta" onClick={onLogout} className="text-white/70 hover:text-white"><LogOut aria-hidden="true" /></Button></div></div>
       </aside>
 
@@ -177,7 +204,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
           <div className="flex min-w-0 items-center gap-3"><Button variant="ghost" size="icon" aria-label="Abrir navegação" className="lg:hidden" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</Button><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-[0.15em] text-eyebrow">{currentSection.label}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{user.tipo === 'responsavel' ? `Acompanhando ${snapshot?.aluno.nome ?? 'aluno'}` : 'Seu espaço de aprendizado e esporte'}</p></div></div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3"><ThemeToggle /><ConnectionStatus status={connection.status} message={connection.message} lastUpdatedAt={connection.lastUpdatedAt} /><NotificationBell revision={notificationsRevision} />{user.tipo === 'responsavel' && children.length > 0 && <Select items={children.map((child) => ({ value: child.id, label: child.nome }))} value={selectedChildId} onValueChange={(value) => { if (typeof value === 'string') onChildChange(value) }}><SelectTrigger className="h-10 max-w-[180px] rounded-xl border-[#D8E1D5] bg-card text-xs sm:max-w-[240px] sm:text-sm" aria-label="Escolher aluno vinculado"><SelectValue placeholder="Escolha o aluno" /></SelectTrigger><SelectContent>{children.map((child) => <SelectItem key={child.id} value={child.id}>{child.nome}</SelectItem>)}</SelectContent></Select>}<Button variant="ghost" size="icon" aria-label="Atualizar meus dados" className="hidden sm:inline-flex" onClick={refresh}><RefreshCw aria-hidden="true" /></Button><Button variant="ghost" size="icon" aria-label="Sair da conta" className="lg:hidden" onClick={onLogout}><LogOut aria-hidden="true" /></Button></div>
         </div></header>
-        {mobileMenuOpen && <nav aria-label="Navegação principal" className="absolute left-0 right-0 top-[68px] z-30 border-b border-border bg-card p-3 shadow-xl lg:hidden"><div className="grid grid-cols-2 gap-1 sm:grid-cols-4">{sections.map((section) => { const Icon = section.icon; return <Button key={section.id} variant={activeSection === section.id ? 'secondary' : 'ghost'} onClick={() => goTo(section.id)} onPointerDown={() => prefetchSection(section.id)} onFocus={() => prefetchSection(section.id)} className="min-h-12 justify-start gap-2 rounded-xl px-3 text-left text-xs"><Icon aria-hidden="true" className="size-4 shrink-0" />{section.label}</Button> })}</div></nav>}
+        {mobileMenuOpen && <nav aria-label="Navegação principal" className="absolute left-0 right-0 top-[68px] z-30 max-h-[70vh] overflow-y-auto border-b border-border bg-card p-3 shadow-xl lg:hidden"><SidebarNav groups={NAV_GROUPS} active={activeSection} onNavigate={(id) => goTo(id as PortalSection)} onPrefetch={(id) => prefetchSection(id as PortalSection)} layout="grid" /></nav>}
         <div className="page-container py-6 sm:py-8">{user.tipo === 'responsavel' && children.length > 1 && <div className="mb-5 flex items-start gap-2 rounded-xl border border-[#DDE8D4] bg-surface-tint px-4 py-3 text-xs leading-5 text-on-soft"><Users aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Você vê somente os registros do aluno selecionado. O responsável não pode alterar a participação no ranking.</div>}
           {connection.status === 'single_worker' && <Alert className="mb-5 border-[#E9E1CC] bg-surface-warm"><Activity aria-hidden="true" /><AlertTitle>Sincronização limitada a este servidor</AlertTitle><AlertDescription>{connection.message}</AlertDescription></Alert>}
           {connection.status === 'offline' && <Alert className="mb-5 border-notice-border bg-surface-warm"><Activity aria-hidden="true" /><AlertTitle>Sem conexão ao vivo</AlertTitle><AlertDescription>Os dados carregados permanecem disponíveis; a conexão será restabelecida automaticamente.</AlertDescription></Alert>}
@@ -186,6 +213,6 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
         <footer className="page-container hidden items-center justify-between border-t border-border/70 py-5 text-[11px] text-muted-foreground md:flex"><span>Gestão Esportiva Escolar · Seu percurso, no seu ritmo.</span><span>Dados privados do aluno selecionado.</span></footer>
       </main>
     </div>
-    {!mobileMenuOpen && <nav aria-label="Navegação rápida" className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-2 shadow-[0_-6px_20px_rgba(28,55,42,0.045)] backdrop-blur-md dark:shadow-black/40 lg:hidden"><div className="mx-auto flex max-w-xl items-stretch justify-around gap-0.5">{sections.filter((section) => ['inicio', 'presencas', 'avaliacoes', 'conquistas', 'atividades', 'duvidas'].includes(section.id)).map((section) => { const Icon = section.icon; return <Button key={section.id} variant="ghost" onClick={() => goTo(section.id)} onPointerDown={() => prefetchSection(section.id)} aria-current={activeSection === section.id ? 'page' : undefined} className={`h-auto min-h-12 min-w-0 flex-1 flex-col gap-1 rounded-lg px-1 py-1 text-[9px] ${activeSection === section.id ? 'bg-surface-soft text-primary' : 'text-muted-foreground'}`}><Icon aria-hidden="true" className="size-[18px]" /><span className="max-w-full truncate">{section.short}</span></Button> })}</div></nav>}
+    {!mobileMenuOpen && <nav aria-label="Navegação rápida" className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-2 shadow-[0_-6px_20px_rgba(28,55,42,0.045)] backdrop-blur-md dark:shadow-black/40 lg:hidden"><div className="mx-auto flex max-w-xl items-stretch justify-around gap-0.5">{MOBILE_TAB_IDS.map((id) => sectionById(id)).map((section) => { const Icon = section.icon; return <Button key={section.id} variant="ghost" onClick={() => goTo(section.id)} onPointerDown={() => prefetchSection(section.id)} aria-current={activeSection === section.id ? 'page' : undefined} className={`h-auto min-h-12 min-w-0 flex-1 flex-col gap-1 rounded-lg px-1 py-1 text-[9px] ${activeSection === section.id ? 'bg-surface-soft text-primary' : 'text-muted-foreground'}`}><Icon aria-hidden="true" className="size-[18px]" /><span className="max-w-full truncate">{section.short}</span></Button> })}</div></nav>}
   </div>
 }
