@@ -104,3 +104,67 @@ async def test_in_scope_question_reaches_the_provider(db, monkeypatch):
 
     assert result["resposta"]["fonte"] == "gemini"
     assert result["resposta"]["texto"] == "Faça 3 séries de 10 repetições."
+
+
+# ─── Fallback de modelos (404/503 não derrubam o assistente) ─────────────────
+async def test_model_fallback_skips_a_dead_model(monkeypatch):
+    """O modelo versionado cai (404) e o alias assume: o aluno recebe resposta."""
+    import httpx
+    import lib.db as _db_unused  # noqa: F401 — garante o import do módulo no caminho
+    from routers import ai_chat
+
+    chamadas: list[str] = []
+
+    class FakeResponse:
+        def __init__(self, status: int, body: dict | str = ""):
+            self.status_code = status
+            self._body = body
+            self.text = body if isinstance(body, str) else str(body)
+
+        def json(self):
+            return self._body
+
+    async def fake_post(self, url, **_kwargs):
+        # Primeiro modelo: 404 (descontinuado). Segundo: resposta válida.
+        chamadas.append(url)
+        if len(chamadas) == 1:
+            return FakeResponse(404, '{"error":{"message":"model not found"}}')
+        return FakeResponse(200, {"candidates": [{"content": {"parts": [{"text": "Faça 3 séries."}]}}]})
+
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.0-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "chave-de-teste")
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    texto = await ai_chat._ask_gemini([], "Quantas séries?")
+
+    assert texto == "Faça 3 séries."
+    assert len(chamadas) == 2  # tentou o morto e caiu para o próximo
+    assert "gemini-2.0-flash" in chamadas[0]
+
+
+async def test_invalid_key_fails_fast_without_trying_other_models(monkeypatch):
+    """401/403 é chave inválida: falha na primeira, sem gastar chamadas."""
+    import httpx
+    from routers import ai_chat
+
+    chamadas: list[str] = []
+
+    class FakeResponse:
+        status_code = 403
+        text = '{"error":{"message":"API key not valid"}}'
+
+        def json(self):
+            return {"error": {"message": "API key not valid"}}
+
+    async def fake_post(self, url, **_kwargs):
+        chamadas.append(url)
+        return FakeResponse()
+
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.0-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "chave-invalida")
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    with pytest.raises(RuntimeError):
+        await ai_chat._ask_gemini([], "teste")
+
+    assert len(chamadas) == 1  # não insistiu nos demais modelos

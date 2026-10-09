@@ -37,8 +37,33 @@ MAX_MESSAGE_CHARS = 2000
 # mantém o custo/latência baixos e evita estourar o limite de tokens).
 CONTEXT_TURNS = 12
 
-GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+# Modelos tentados em ordem (lista real desta conta, verificada via /models).
+# Se um estiver sobrecarregado (503) ou indisponível (404), o próximo assume —
+# o aluno não percebe a troca. `gemini-flash-latest` primeiro porque é o alias
+# estável que acompanha a geração atual sem quebra de nome.
+# Configurável por env: GEMINI_MODEL define o PRIMEIRO da lista.
+DEFAULT_MODELS = (
+    "gemini-flash-latest",
+    "gemini-3.8-flash",
+    "gemini-flash-lite-latest",
+)
+
+
+def _gemini_models() -> tuple[str, ...]:
+    """Lista de modelos: o configurado por env primeiro, sem repetir os padrões."""
+    preferido = (os.getenv("GEMINI_MODEL") or "").strip()
+    if preferido:
+        return (preferido, *(m for m in DEFAULT_MODELS if m != preferido))
+    return DEFAULT_MODELS
+
+
+def _gemini_model() -> str:
+    """Modelo primário (usado no diagnóstico)."""
+    return _gemini_models()[0]
+
+
+def _gemini_url(modelo: str) -> str:
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 
 SYSTEM_PROMPT = (
     "Você é o assistente virtual do sistema de gestão esportiva. "
@@ -124,12 +149,30 @@ async def _ask_gemini(history: list[dict[str, Any]], pergunta: str) -> str:
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(GEMINI_URL, params={"key": key}, json=payload)
+        resp = None
+        ultimo_erro = ""
+        for modelo in _gemini_models():
+            resp = await client.post(
+                _gemini_url(modelo),
+                headers={"x-goog-api-key": key},
+                json=payload,
+            )
+            if resp.status_code < 400:
+                break
+            ultimo_erro = resp.text[:300]
+            logger.warning(
+                '{"event": "ia_gemini_retry", "status": %d, "model": "%s"}',
+                resp.status_code, modelo,
+            )
+            # 404 (modelo descontinuado) e 503 (sobrecarga) valem tentar o próximo;
+            # 401/403 (chave inválida) não — falha na hora, sem gastar chamadas.
+            if resp.status_code in (401, 403):
+                break
 
-    if resp.status_code >= 400:
-        detail = resp.text[:200]
-        logger.error('{"event": "ia_gemini_failed", "status": %d, "body": "%s"}', resp.status_code, detail)
-        raise RuntimeError(f"Gemini respondeu HTTP {resp.status_code}")
+    if resp is None or resp.status_code >= 400:
+        status = resp.status_code if resp is not None else 0
+        logger.error('{"event": "ia_gemini_failed", "status": %d, "body": "%s"}', status, ultimo_erro)
+        raise RuntimeError(f"Gemini respondeu HTTP {status}: {ultimo_erro[:120]}")
 
     data = resp.json()
     candidates = data.get("candidates") or []
@@ -166,6 +209,23 @@ def _local_answer(pergunta: str) -> str:
 async def history(revision: int = Query(default=0, ge=0), user: User = Depends(get_current_user)) -> dict[str, Any]:
     """Histórico do PRÓPRIO usuário (filtro por user_id)."""
     return {"mensagens": await _history(user), "ia_disponivel": _api_key() is not None}
+
+
+@router.get("/diagnostico")
+async def diagnostics(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """Diz, sem expor a chave, se o provedor está configurado e respondendo.
+
+    Faz uma chamada real e curta ao modelo: um erro de configuração passa a
+    aparecer aqui em vez de só se manifestar na pergunta do aluno.
+    """
+    key = _api_key()
+    if not key:
+        return {"configurado": False, "modelo": _gemini_model(), "erro": "GEMINI_API_KEY ausente no ambiente"}
+    try:
+        await _ask_gemini([], "Responda apenas: OK")
+        return {"configurado": True, "modelo": _gemini_model(), "chave_valida": True, "erro": None}
+    except Exception as exc:
+        return {"configurado": True, "modelo": _gemini_model(), "chave_valida": False, "erro": str(exc)[:300]}
 
 
 @router.post("/chat", status_code=201)
