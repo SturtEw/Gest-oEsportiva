@@ -98,17 +98,43 @@ async def test_student_joins_directly_with_code(db):
     assert (await db.turma_convites.find_one({"id": invite["id"]}))["usos"] == 1
 
 
-async def test_code_cannot_move_a_student_who_already_has_a_class(db):
+async def test_code_joins_a_second_class_multi_enrollment(db):
+    """MULTI-TURMAS: o aluno pode pertencer a mais de uma turma ao mesmo tempo.
+
+    (Antes: o segundo convite era rejeitado com 409 e o aluno ficava preso na
+    primeira turma — comportamento removido na migração multi-turmas.)
+    """
     invite_1 = await router.create_invite("t-1", router.InviteCreate(), user=TEACHER)
     invite_2 = await router.create_invite("t-2", router.InviteCreate(), user=OTHER_TEACHER)
     await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_1["codigo"]), user=STUDENT)
+    await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_2["codigo"]), user=STUDENT)
 
-    with pytest.raises(HTTPException) as error:
-        await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_2["codigo"]), user=STUDENT)
+    student = await db.alunos.find_one({"id": "aluno-1"})
+    # Está nas duas turmas; turma_id (principal/legado) continua a primeira.
+    assert sorted(student["turmas_ids"]) == ["t-1", "t-2"]
+    assert student["turma_id"] == "t-1"
+    assert "aluno-1" in (await db.turmas.find_one({"id": "t-2"}))["alunos_ids"]
 
-    assert error.value.status_code == 409
-    assert await student_class(db) == "t-1"
-    assert "aluno-1" not in (await db.turmas.find_one({"id": "t-2"}))["alunos_ids"]
+
+async def test_leaving_one_class_keeps_the_others(db):
+    """Sair de uma turma preserva as demais e reeleição da principal."""
+    invite_1 = await router.create_invite("t-1", router.InviteCreate(), user=TEACHER)
+    invite_2 = await router.create_invite("t-2", router.InviteCreate(), user=OTHER_TEACHER)
+    await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_1["codigo"]), user=STUDENT)
+    await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_2["codigo"]), user=STUDENT)
+
+    result = await router.leave_class("t-1", user=STUDENT)
+
+    assert result["turmas_restantes"] == ["t-2"]
+    assert result["turma_id"] == "t-2"
+    student = await db.alunos.find_one({"id": "aluno-1"})
+    assert student["turmas_ids"] == ["t-2"] and student["turma_id"] == "t-2"
+    # Assento liberado na turma abandonada.
+    assert "aluno-1" not in (await db.turmas.find_one({"id": "t-1"}))["alunos_ids"]
+
+    # Sair da última turma deixa o aluno sem nenhuma (pode buscar de novo).
+    final = await router.leave_class("t-2", user=STUDENT)
+    assert final["turmas_restantes"] == [] and final["turma_id"] is None
 
 
 @pytest.mark.parametrize("change", [
@@ -228,12 +254,19 @@ async def test_approval_on_full_class_keeps_request_pending(db):
     assert await student_class(db) is None
 
 
-async def test_joining_by_code_cancels_pending_request(db):
+async def test_joining_by_code_cancels_only_that_class_pending_request(db):
+    """O convite cancela a solicitação pendente DAQUELA turma, não as outras."""
     created = await router.create_request(router.JoinRequestCreate(turma_id="t-2"), user=STUDENT)
     invite = await router.create_invite("t-1", router.InviteCreate(), user=TEACHER)
 
     await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite["codigo"]), user=STUDENT)
 
+    # Multi-turmas: a solicitação a t-2 segue pendente (o aluno pode entrar nela também).
+    assert (await db.solicitacoes_turma.find_one({"id": created["id"]}))["status"] == "pendente"
+
+    # E um convite PARA A MESMA turma da solicitação cancela essa solicitação.
+    invite_same = await router.create_invite("t-2", router.InviteCreate(), user=OTHER_TEACHER)
+    await router.join_class_with_code(router.JoinWithCodeInput(codigo=invite_same["codigo"]), user=STUDENT)
     assert (await db.solicitacoes_turma.find_one({"id": created["id"]}))["status"] == "cancelada"
 
 

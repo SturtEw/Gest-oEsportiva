@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useRef, useState } from 'react'
-import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, MessagesSquare, RefreshCw, Settings, Timer, Users, X, Trophy } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, BookOpenCheck, CalendarCheck2, Dumbbell, Flag, Home, LogOut, Menu, MessageCircle, MessagesSquare, RefreshCw, School, Settings, Timer, Users, X, Trophy } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -21,12 +21,14 @@ import { useImpersonation } from '@/hooks/useImpersonation'
 import { useStudentPortal } from '@/hooks/useStudentPortal'
 import { ForumWidget } from '@/features/forum/widget/ForumWidget'
 import { AccountManagement } from '@/features/account/AccountManagement'
+import { MyClassesSection } from '@/features/enrollment/MyClassesSection'
 import { initials } from '@/lib/formatters'
 import type { LinkedChild, PortalSection, SessionUser } from '@/lib/types'
 
 const sections: { id: PortalSection; label: string; short: string; icon: typeof Home }[] = [
   { id: 'inicio', label: 'Início', short: 'Início', icon: Home },
   { id: 'turma', label: 'Minha turma', short: 'Turma', icon: Users },
+  { id: 'minhas-turmas', label: 'Minhas turmas', short: 'Turmas', icon: School },
   { id: 'presencas', label: 'Presenças', short: 'Presenças', icon: CalendarCheck2 },
   { id: 'avaliacoes', label: 'Avaliações', short: 'Avaliações', icon: BookOpenCheck },
   { id: 'conquistas', label: 'Conquistas e pontos', short: 'Conquistas', icon: Award },
@@ -143,6 +145,7 @@ export function StudentArea({ user, studentId, children, selectedChildId, onChil
     switch (activeSection) {
       case 'inicio': return <HomeDashboard snapshot={snapshot} onOpenSection={goTo} />
       case 'turma': return <ClassSummary turma={snapshot.turma} professorNome={snapshot.professor_nome} alunoId={studentId} />
+      case 'minhas-turmas': return <MyClassesSection alunoId={studentId} revision={enrollmentRevision} readOnly={isImpersonating} onChanged={refresh} />
       case 'presencas': return <AttendanceSection attendance={snapshot.presencas} />
       case 'avaliacoes': return <AssessmentSection assessments={snapshot.avaliacoes} />
       case 'conquistas': return <AchievementSection alunoId={studentId} studentName={snapshot.aluno.nome} awards={snapshot.conquistas} participates={snapshot.aluno.participa_ranking} canEditPreference={canEditRanking && !isImpersonating} forcedPrivate={forcedPrivate} setForcedPrivate={setForcedPrivate} onPreferenceChange={setStudentRankingPreference} />

@@ -17,6 +17,12 @@ export const enrollmentApi = {
   requestToJoin: (turma_id: string, mensagem?: string) =>
     request<JoinRequest>('/api/enrollment/requests', { method: 'POST', body: JSON.stringify({ turma_id, ...(mensagem ? { mensagem } : {}) }) }),
   cancelJoinRequest: (id: string) => request<void>(`/api/enrollment/requests/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Multi-turmas: sai de UMA turma, preservando as demais. */
+  leaveClass: (turmaId: string) =>
+    request<{ turmas_restantes: string[]; turma_id: string | null; turma: JoinedClass | null }>(
+      `/api/enrollment/classes/${encodeURIComponent(turmaId)}`,
+      { method: 'DELETE' },
+    ),
   joinWithInvite: (codigo: string) =>
     request<{ turma: JoinedClass }>('/api/enrollment/join', { method: 'POST', body: JSON.stringify({ codigo }) }),
 

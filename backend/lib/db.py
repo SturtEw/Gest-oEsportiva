@@ -568,6 +568,9 @@ INDEXES: dict[str, list[IndexModel]] = {
 
         IndexModel([("turma_id", ASCENDING)], name="turma"),
 
+        # Multi-turmas: listagens por lista de turmas (fórum, atividades, analytics).
+        IndexModel([("turmas_ids", ASCENDING)], name="turmas_ids"),
+
         IndexModel([("responsavel_id", ASCENDING)], name="responsavel"),
 
         IndexModel(

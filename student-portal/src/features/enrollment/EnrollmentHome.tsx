@@ -14,6 +14,8 @@ interface Props {
   onJoined: () => void
   /** Admin "view as": consultation only, no requests or codes. */
   readOnly?: boolean
+  /** Quando true, o cabeçalho fala de ADICIONAR turma (aluno já matriculado). */
+  adding?: boolean
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  *   code from the teacher → direct entry; or
  *   search → join request → teacher approval (status shown here).
  */
-export function EnrollmentHome({ revision, onJoined, readOnly }: Props) {
+export function EnrollmentHome({ revision, onJoined, readOnly, adding }: Props) {
   const enrollment = useStudentEnrollment({ enabled: true, revision })
   const announcedRef = useRef<string | null>(null)
   const onJoinedRef = useRef(onJoined)
@@ -47,10 +49,14 @@ export function EnrollmentHome({ revision, onJoined, readOnly }: Props) {
   return (
     <section className="space-y-6" aria-labelledby="enrollment-title">
       <header>
-        <p className="eyebrow flex items-center gap-2"><Compass aria-hidden="true" className="size-4" />Primeiros passos</p>
-        <h2 id="enrollment-title" className="type-title mt-2 text-3xl font-extrabold text-heading">Encontre sua turma</h2>
+        <p className="eyebrow flex items-center gap-2"><Compass aria-hidden="true" className="size-4" />{adding ? 'Mais turmas' : 'Primeiros passos'}</p>
+        <h2 id="enrollment-title" className="type-title mt-2 text-3xl font-extrabold text-heading">
+          {adding ? 'Encontre outra turma' : 'Encontre sua turma'}
+        </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Recebeu um código do professor? Use-o para entrar direto. Se não, procure a turma e peça para participar — o professor responde por aqui.
+          {adding
+            ? 'Você pode participar de mais de uma turma. Recebeu um código? Entre direto. Se não, procure a turma e peça para participar.'
+            : 'Recebeu um código do professor? Use-o para entrar direto. Se não, procure a turma e peça para participar — o professor responde por aqui.'}
         </p>
       </header>
 

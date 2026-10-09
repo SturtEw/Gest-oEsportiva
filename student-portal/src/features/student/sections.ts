@@ -8,6 +8,7 @@ import type { PortalSection } from '@/lib/types'
 
 const loaders = {
   turma: () => import('@/features/class/ClassSummary'),
+  'minhas-turmas': () => import('@/features/enrollment/MyClassesSection'),
   presencas: () => import('@/features/attendance/AttendanceSection'),
   avaliacoes: () => import('@/features/assessments/AssessmentSection'),
   conquistas: () => import('@/features/achievements/AchievementSection'),
@@ -23,6 +24,7 @@ const loaders = {
 } satisfies Partial<Record<PortalSection | 'enrollment', () => Promise<unknown>>>
 
 export const ClassSummary = lazy(() => loaders.turma().then((module) => ({ default: module.ClassSummary })))
+export const MyClassesSection = lazy(() => loaders['minhas-turmas']().then((module) => ({ default: module.MyClassesSection })))
 export const AttendanceSection = lazy(() => loaders.presencas().then((module) => ({ default: module.AttendanceSection })))
 export const AssessmentSection = lazy(() => loaders.avaliacoes().then((module) => ({ default: module.AssessmentSection })))
 export const AchievementSection = lazy(() => loaders.conquistas().then((module) => ({ default: module.AchievementSection })))

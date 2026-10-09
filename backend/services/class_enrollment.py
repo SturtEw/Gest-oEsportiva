@@ -96,34 +96,72 @@ async def resolve_invite(raw_code: str | None) -> tuple[dict[str, Any], dict[str
 
 
 async def link_student_to_class(aluno_id: str, turma: dict[str, Any]) -> None:
-    """Atomically place a student without a class into `turma`.
+    """Coloca o aluno em `turma` (MULTI-TURMAS: o aluno pode ter várias).
 
-    Idempotent for the same class; raises 409 when the student already belongs to
-    another class or the class is full.
+    Mantém `turmas_ids` (a lista completa) e `turma_id` (a principal = primeira)
+    em sincronia, conforme o contrato do modelo Aluno. As duas escritas são
+    atômicas por documento:
+      1. reivindica o assento na turma (guarda de capacidade no próprio filtro);
+      2. adiciona a turma à lista do aluno.
+    Se a etapa 2 falhar, o assento é devolvido (compensação).
+
+    Idempotente na mesma turma; 409 se a turma estiver cheia.
     """
-    claimed = await db.alunos.update_one({"id": aluno_id, "turma_id": None}, {"$set": {"turma_id": turma["id"]}})
+    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "id": 1, "turma_id": 1, "turmas_ids": 1})
+    if not student:
+        raise HTTPException(status_code=404, detail="Cadastro de aluno não encontrado")
 
-    if claimed.matched_count == 0:
-        current = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "turma_id": 1})
+    # Já pertence a esta turma: nada a fazer (nem reivindica assento de novo).
+    if student.get("turma_id") == turma["id"] or turma["id"] in (student.get("turmas_ids") or []):
+        return
 
-        if not current:
-            raise HTTPException(status_code=404, detail="Cadastro de aluno não encontrado")
-
-        if current.get("turma_id") == turma["id"]:
-            return
-
-        raise HTTPException(status_code=409, detail="Este aluno já participa de uma turma.")
-
-    # `alunos_ids.<capacity-1>` existing means the array already has `capacity`
-    # members, so this filter is the capacity check and the seat claim in one write.
+    # 1. Assento: `alunos_ids.<capacity-1>` existente significa que a turma já
+    #    tem `capacity` membros — checagem de capacidade e reserva em uma escrita.
     seat = await db.turmas.update_one(
         {"id": turma["id"], f"alunos_ids.{capacity_of(turma) - 1}": {"$exists": False}},
         {"$addToSet": {"alunos_ids": aluno_id}},
     )
-
     if seat.matched_count == 0:
-        await db.alunos.update_one({"id": aluno_id, "turma_id": turma["id"]}, {"$set": {"turma_id": None}})
         raise HTTPException(status_code=409, detail="Esta turma atingiu a capacidade cadastrada.")
+
+    # 2. Vínculo no aluno. `turma_id` legado = primeira turma quando ainda não há.
+    try:
+        await db.alunos.update_one(
+            {"id": aluno_id},
+            {
+                "$addToSet": {"turmas_ids": turma["id"]},
+                "$set": {"turma_id": student.get("turma_id") or turma["id"]},
+            },
+        )
+    except Exception:
+        # Compensação: devolve o assento reservado e propaga o erro.
+        await db.turmas.update_one({"id": turma["id"]}, {"$pull": {"alunos_ids": aluno_id}})
+        raise
+
+
+async def unlink_student_from_class(aluno_id: str, turma_id: str) -> dict[str, Any]:
+    """Remove o aluno de UMA turma, preservando as demais.
+
+    Devolve `{"turmas_restantes": [...], "turma_id": <nova principal ou None>}`.
+    """
+    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "id": 1, "turma_id": 1, "turmas_ids": 1})
+    if not student:
+        raise HTTPException(status_code=404, detail="Cadastro de aluno não encontrado")
+
+    ids = list(student.get("turmas_ids") or [])
+    legacy = student.get("turma_id")
+    if legacy and legacy not in ids:
+        ids.insert(0, legacy)
+    if turma_id not in ids:
+        raise HTTPException(status_code=409, detail="Você não participa desta turma.")
+
+    remaining = [item for item in ids if item != turma_id]
+    await db.turmas.update_one({"id": turma_id}, {"$pull": {"alunos_ids": aluno_id}})
+    await db.alunos.update_one(
+        {"id": aluno_id},
+        {"$set": {"turma_id": remaining[0] if remaining else None, "turmas_ids": remaining}},
+    )
+    return {"turmas_restantes": remaining, "turma_id": remaining[0] if remaining else None}
 
 
 async def cancel_pending_requests(aluno_id: str, reason: str) -> int:
@@ -142,7 +180,13 @@ async def join_with_invite(aluno_id: str, raw_code: str | None) -> dict[str, Any
 
     await record_invite_use(invite["id"])
 
-    await cancel_pending_requests(aluno_id, "Entrou em uma turma por código de convite")
+    # Multi-turmas: cancelar apenas a solicitação PENDENTE para ESTA turma
+    # (acabou de ser atendida por convite). Solicitações a outras turmas
+    # permanecem pendentes.
+    await db.solicitacoes_turma.update_many(
+        {"aluno_id": aluno_id, "turma_id": turma["id"], "status": "pendente"},
+        {"$set": {"status": "cancelada", "motivo_rejeicao": "Entrou nesta turma por código de convite", "dataDecisao": now_utc()}},
+    )
 
     return {"turma": class_summary(turma), "professor_id": turma["professor_id"]}
 

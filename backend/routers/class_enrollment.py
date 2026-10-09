@@ -41,6 +41,7 @@ from services.class_enrollment import (
     public_invite,
     public_request,
     seats_left,
+    unlink_student_from_class,
 )
 
 
@@ -183,20 +184,28 @@ async def my_requests(user: User = Depends(get_current_user_with_impersonation))
 async def create_request(payload: JoinRequestCreate, user: User = Depends(get_current_user)):
     aluno_id = _require_student(user)
 
-    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "id": 1, "nome": 1, "turma_id": 1})
+    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "id": 1, "nome": 1, "turma_id": 1, "turmas_ids": 1})
     if not student:
         raise HTTPException(status_code=404, detail="Cadastro de aluno não encontrado")
-    if student.get("turma_id"):
-        raise HTTPException(status_code=409, detail="Você já participa de uma turma.")
 
     turma = await db.turmas.find_one({"id": payload.turma_id}, CLASS_SUMMARY_PROJECTION)
     if not turma or not turma.get("professor_id"):
         raise HTTPException(status_code=404, detail="Turma não encontrada ou sem professor responsável")
+
+    # MULTI-TURMAS: o aluno pode solicitar outras turmas mesmo já matriculado.
+    # O único bloqueio é já pertencer à turma pedida.
+    minhas_turmas = list(student.get("turmas_ids") or [])
+    if student.get("turma_id") and student["turma_id"] not in minhas_turmas:
+        minhas_turmas.append(student["turma_id"])
+    if turma["id"] in minhas_turmas:
+        raise HTTPException(status_code=409, detail="Você já participa desta turma.")
+
     if seats_left(turma) == 0:
         raise HTTPException(status_code=409, detail="Esta turma está lotada no momento.")
 
     pending_message = "Você já tem uma solicitação pendente. Cancele-a para escolher outra turma."
-    if await db.solicitacoes_turma.find_one({"aluno_id": aluno_id, "status": "pendente"}, {"_id": 0, "id": 1}):
+    pending_query = {"aluno_id": aluno_id, "status": "pendente"}
+    if await db.solicitacoes_turma.find_one(pending_query, {"_id": 0, "id": 1}):
         raise HTTPException(status_code=409, detail=pending_message)
 
     document = SolicitacaoTurma(
@@ -235,6 +244,30 @@ async def cancel_request(request_id: str, user: User = Depends(get_current_user)
 
     await _notify(aluno_id, document.get("professor_id"))
     return Response(status_code=204)
+
+
+@router.delete("/classes/{turma_id}", status_code=200)
+async def leave_class(turma_id: str, user: User = Depends(get_current_user)):
+    """Aluno sai de UMA turma (multi-turmas: preserva as demais).
+
+    Libera o assento na turma e cancela uma eventual solicitação pendente
+    aquele professor. Devolve as turmas restantes.
+    """
+    aluno_id = _require_student(user)
+    student = await db.alunos.find_one({"id": aluno_id}, {"_id": 0, "id": 1, "nome": 1, "turma_id": 1, "turmas_ids": 1})
+    if not student:
+        raise HTTPException(status_code=404, detail="Cadastro de aluno não encontrado")
+
+    turma = await db.turmas.find_one({"id": turma_id}, CLASS_SUMMARY_PROJECTION)
+    result = await unlink_student_from_class(aluno_id, turma_id)
+
+    await cancel_pending_requests(aluno_id, "Aluno saiu da turma")
+    await _notify(aluno_id, (turma or {}).get("professor_id"))
+
+    return {
+        **result,
+        "turma": class_summary(turma) if turma else None,
+    }
 
 
 @router.post("/join")
@@ -379,16 +412,13 @@ async def decide_request(request_id: str, payload: JoinRequestDecision, user: Us
     try:
         await link_student_to_class(document["aluno_id"], turma)
     except HTTPException as exc:
-        student = await db.alunos.find_one({"id": document["aluno_id"]}, {"_id": 0, "turma_id": 1})
-        if student and student.get("turma_id"):
-            # The student meanwhile joined another class (e.g. by invite code).
-            await db.solicitacoes_turma.update_one({"id": request_id}, {"$set": {"status": "cancelada", "motivo_rejeicao": "O aluno já entrou em outra turma"}})
-            await _notify(document["aluno_id"], user.id)
-            raise HTTPException(status_code=409, detail="O aluno já entrou em outra turma.") from exc
+        # Multi-turmas: o único conflito real é capacidade/duplicidade na turma
+        # alvo — pertencer a outras turmas NÃO bloqueia a aprovação.
         await db.solicitacoes_turma.update_one({"id": request_id}, {"$set": {"status": "pendente", "decidido_por": None, "dataDecisao": None}})
-        raise
+        raise exc
 
-    await cancel_pending_requests(document["aluno_id"], "Solicitação aprovada em outra turma")
+    # Multi-turmas: as demais solicitações do aluno seguem válidas (ele pode
+    # pertencer a várias turmas); nada de cancela-las aqui.
     await publish_event(document["aluno_id"], "portal")
     await _notify(document["aluno_id"], user.id)
     await publish_user_event(user.id, "class_roster")
