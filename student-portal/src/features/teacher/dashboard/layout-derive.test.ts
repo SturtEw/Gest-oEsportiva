@@ -8,7 +8,7 @@
  * that actually matters: **every card fits inside the grid**.
  */
 import { describe, expect, it } from 'vitest'
-import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, CONTENT_INSET, containerPaddingFor, fullWidthCardWidth, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, CONTENT_INSET, fullWidthCardWidth, packLayout } from './layout-derive'
 import type { WidgetInstance } from './layout-types'
 
 function widget(id: string, w: number, h: number): WidgetInstance {
@@ -75,32 +75,37 @@ describe('packLayout', () => {
 
 describe('alignment with the metrics tiles above the grid', () => {
   /**
-   * The bug this locks down: the grid had no inset, so a widget covered the full panel
-   * width while the tiles above it were inset by their own `p-4`. Every card was then
-   * 16px further left and 32px wider than the row above — the "passing the edge" report.
+   * The bug this locks down: the grid was told to inset itself with `containerPadding`
+   * while it was already handed the container's inset width. react-grid-layout adds the
+   * padding on top of what it is given, so the whole grid shifted right by the padding and
+   * the trailing column hung past the panel edge — the widget that ran off a phone screen.
+   *
+   * The inset is therefore done in CSS on the measured element, and the grid is given 0.
+   * This asserts the arithmetic the grid now performs: with no padding, a card in column 0
+   * starts exactly on the tiles' inset and a full-width card closes on the opposite one.
    */
-  it('starts the first column exactly on the metrics tiles inset, at every breakpoint', () => {
+  it('leaves column 0 on the tiles inset when the grid does not inset itself', () => {
+    const gridContainerPadding = 0
     for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
       const margin = BREAKPOINT_MARGIN_X[breakpoint]
-      const padding = containerPaddingFor(breakpoint)
       // react-grid-layout: left = containerPadding + x*(colWidth+margin) + margin, for x=0.
-      // The two terms must add up to the tiles' inset, not to the inset plus the margin.
-      const leftEdge = padding + margin
-      expect(leftEdge, `${breakpoint} left edge`).toBe(CONTENT_INSET)
+      // The measured element already carries the tiles' inset as CSS padding, so the grid's
+      // own contribution must be only the gutter.
+      const gridContribution = gridContainerPadding + margin
+      expect(gridContribution, `${breakpoint} grid contribution`).toBe(margin)
     }
   })
 
-  it('keeps a full-width card inside the panel, not spilling past it', () => {
-    // A 390px phone; the grid container is the content column minus the shell's own px-4.
-    const containerWidth = 390 - 32
+  it('keeps a full-width card inside the measured container', () => {
+    // A 390px phone. The measured element is the content column (`main`'s px-4) minus the
+    // grid's own px-4 inset, which is the width react-grid-layout is handed.
+    const measuredWidth = 390 - 32 - 2 * CONTENT_INSET
     for (const breakpoint of Object.keys(BREAKPOINT_COLS) as Array<keyof typeof BREAKPOINT_COLS>) {
       const margin = BREAKPOINT_MARGIN_X[breakpoint]
-      const padding = containerPaddingFor(breakpoint)
       const cols = BREAKPOINT_COLS[breakpoint]
-      const width = fullWidthCardWidth(containerWidth, cols, margin, padding)
-      // The card is inset by containerPadding on both sides of the container.
-      const usable = containerWidth - padding * 2
-      expect(width, `${breakpoint} card width`).toBeLessThanOrEqual(usable + 0.5)
+      // No containerPadding: the inset already happened in CSS.
+      const width = fullWidthCardWidth(measuredWidth, cols, margin, 0)
+      expect(width, `${breakpoint} card width`).toBeLessThanOrEqual(measuredWidth + 0.5)
       expect(width, `${breakpoint} card width`).toBeGreaterThan(0)
     }
   })

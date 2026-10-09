@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from 'cn'
 import type { TeacherOverview } from '@/lib/types'
 import type { WidgetInstance, WidgetKind, WidgetLayout } from './layout-types'
-import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, BREAKPOINT_MARGIN_Y, containerPaddingFor, packLayout } from './layout-derive'
+import { BREAKPOINT_COLS, BREAKPOINT_MARGIN_X, BREAKPOINT_MARGIN_Y, packLayout } from './layout-derive'
 import { MetricsHeaderPanel } from './MetricsHeaderPanel'
 import type { KpiTile } from './KpiCard'
 import { useDashboardLayout } from './useDashboardLayout'
@@ -55,19 +55,17 @@ const MARGIN = {
 }
 
 /**
- * The horizontal inset that puts the grid's first column on the same line as the metrics
- * tiles above it. The vertical padding is 0: the grid manages its own row gaps, and extra
- * top padding would just be dead space between the header and the first card.
+ * The grid is told not to inset: the padding is applied in CSS to the measured container
+ * instead (see the wrapper below).
  *
- * Without this the grid spanned its full container while the tiles were inset by their
- * `p-4`, so every widget sat 16px further left and 32px wider than the row above — the
- * "passing the edge" the professor reported.
+ * react-grid-layout places items at `containerPadding + x*(colWidth + margin) + margin`
+ * but computes `colWidth` from the already-inset width it is handed, so a non-zero
+ * containerPadding shifts the entire grid right while the columns stay the same size —
+ * the trailing column then hangs past the panel edge. Doing the inset in CSS leaves the
+ * library with coordinates that match the box it measured, so column 0 lands on the
+ * tiles' line and the last one closes on the opposite edge.
  */
-const CONTAINER_PADDING = {
-  lg: [containerPaddingFor('lg'), 0] as const,
-  md: [containerPaddingFor('md'), 0] as const,
-  sm: [containerPaddingFor('sm'), 0] as const,
-}
+const CONTAINER_PADDING = { lg: [0, 0] as const, md: [0, 0] as const, sm: [0, 0] as const }
 
 export function CustomizableDashboard({
   overview,
@@ -88,7 +86,16 @@ export function CustomizableDashboard({
   const { layout } = dashboard
   const [editing, setEditing] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const { width, containerRef, mounted } = useContainerWidth()
+  // `measureBeforeMount` avoids a first paint at the hook's `initialWidth` (1280px), which
+  // would briefly lay the grid out at desktop width before the ResizeObserver reports the
+  // real container. Nothing is drawn until the width is actually measured.
+  //
+  // `width` is the container's content box. react-grid-layout then *adds* containerPadding
+  // on top of that width when it places items, so asking it to inset as well double-counts
+  // and shifts the whole grid right by the padding — which is what pushed the last column
+  // past the panel edge. The inset is therefore done in CSS on the measured element
+  // (see the containerRef div below) and the grid is told not to inset at all.
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
 
   const kpis = useMemo<KpiTile[]>(() => buildKpis(overview), [overview])
 
@@ -214,10 +221,11 @@ export function CustomizableDashboard({
           </Button>
         </div>
       ) : (
-        // The measured container: `useContainerWidth` observes this div and hands the
-        // grid a pixel width, which is what react-grid-layout v2 expects. min-w-0 lets it
-        // shrink inside the flex/grid parents instead of being pushed wide by the grid.
-        <div ref={containerRef} className="w-full max-w-full min-w-0">
+        // The measured container. The horizontal inset that lines the grid up with the
+        // metrics tiles is applied here, in CSS, so the width react-grid-layout measures
+        // is the width it can actually use — see CONTAINER_PADDING. min-w-0 lets it shrink
+        // inside its parents instead of being pushed wide by the grid.
+        <div ref={containerRef} className="w-full max-w-full min-w-0 px-4">
           {mounted ? (
             <ResponsiveGridLayout
               width={width}

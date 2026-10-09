@@ -28,29 +28,15 @@ export const BREAKPOINT_MARGIN_Y: Record<LayoutBreakpoint, number> = { lg: 16, m
 
 /**
  * The inset the metrics tiles above the grid sit on (`MetricsHeaderPanel`'s `p-4`).
- * Whatever the grid does, a card in column 0 must start here so the two columns line up.
+ * The grid's measured container carries this as CSS padding, so a card in column 0 starts
+ * on the tiles' line and a full-width one closes on the opposite edge.
+ *
+ * It is deliberately NOT passed to react-grid-layout as `containerPadding`: the library
+ * adds that on top of the width it is handed — a width the hook already measured inside
+ * the padding — so a non-zero value shifts the whole grid right without shrinking its
+ * columns, and the trailing column hangs past the panel edge.
  */
 export const CONTENT_INSET = 16
-
-/**
- * react-grid-layout computes a column as
- *   colWidth = (width - margin*(cols-1) - containerPadding*2) / cols
- * and places column 0 at `containerPadding + margin`. So the leading edge of a card is
- * `containerPadding + margin`, and the trailing edge of a full-width card is that plus
- * `colWidth*cols`, i.e. the container width less `containerPadding`. Both agree with the
- * tiles' `p-4` inset only when `containerPadding + margin` equals `CONTENT_INSET`... *and*
- * `containerPadding` equals it too, since the two edges are not symmetric.
- *
- * Hence `containerPadding = CONTENT_INSET - margin(x)`: it makes the leading edge land on
- * the tiles' line, and because the trailing edge is measured from `containerPadding`
- * alone, a full-width card ends on the opposite one.
- *
- * Setting this to 0 (an earlier version) made every widget sit 16px left of and 32px
- * wider than the metrics row, at every breakpoint — the size mismatch the professor saw.
- */
-export function containerPaddingFor(breakpoint: LayoutBreakpoint): number {
-  return Math.max(0, CONTENT_INSET - BREAKPOINT_MARGIN_X[breakpoint])
-}
 
 /**
  * The width react-grid-layout gives a full-width card, given the measured container.
